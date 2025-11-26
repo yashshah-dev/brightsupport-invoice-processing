@@ -46,7 +46,23 @@ export const SERVICE_CATEGORIES: Record<string, ServiceCategory> = {
 
 // Victoria, Australia Public Holidays
 // Source: https://business.vic.gov.au/business-information/public-holidays
-// Last updated: 21 Nov 2025
+// Last updated: 27 Nov 2025
+
+export const VICTORIA_PUBLIC_HOLIDAYS_2024 = [
+  { date: '2024-01-01', name: "New Year's Day", state: 'VIC' },
+  { date: '2024-01-26', name: 'Australia Day', state: 'VIC' },
+  { date: '2024-03-11', name: 'Labour Day', state: 'VIC' },
+  { date: '2024-03-29', name: 'Good Friday', state: 'VIC' },
+  { date: '2024-03-30', name: 'Saturday before Easter Sunday', state: 'VIC' },
+  { date: '2024-03-31', name: 'Easter Sunday', state: 'VIC' },
+  { date: '2024-04-01', name: 'Easter Monday', state: 'VIC' },
+  { date: '2024-04-25', name: 'ANZAC Day', state: 'VIC' },
+  { date: '2024-06-10', name: "King's Birthday", state: 'VIC' },
+  { date: '2024-09-27', name: 'Friday before AFL Grand Final', state: 'VIC' },
+  { date: '2024-11-05', name: 'Melbourne Cup Day', state: 'VIC' },
+  { date: '2024-12-25', name: 'Christmas Day', state: 'VIC' },
+  { date: '2024-12-26', name: 'Boxing Day', state: 'VIC' },
+];
 
 export const VICTORIA_PUBLIC_HOLIDAYS_2025 = [
   { date: '2025-01-01', name: "New Year's Day", state: 'VIC' },
@@ -82,6 +98,7 @@ export const VICTORIA_PUBLIC_HOLIDAYS_2026 = [
 ];
 
 export const ALL_VICTORIA_HOLIDAYS = [
+  ...VICTORIA_PUBLIC_HOLIDAYS_2024,
   ...VICTORIA_PUBLIC_HOLIDAYS_2025,
   ...VICTORIA_PUBLIC_HOLIDAYS_2026,
 ];
