@@ -311,7 +311,8 @@ export async function generateHTML(invoiceData: InvoiceData): Promise<void> {
         invoiceData.invoiceNumber,
         'html',
         invoiceData.startDate,
-        invoiceData.endDate
+        invoiceData.endDate,
+        invoiceData.clientInfo?.name
     );
   
   document.body.appendChild(a);

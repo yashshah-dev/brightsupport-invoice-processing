@@ -123,14 +123,24 @@ export function generateInvoiceFilename(
   invoiceNumber: string,
   extension: string = 'pdf',
   startDate?: Date,
-  endDate?: Date
+  endDate?: Date,
+  clientName?: string
 ): string {
   // Optimized scheme: INV-XXXX_23Dec24-25Jan25_001637.ext
   const time = format(new Date(), 'HHmmss');
   const range = startDate && endDate
     ? `${format(startDate, 'ddMMMyy')}-${format(endDate, 'ddMMMyy')}`
     : undefined;
-  const base = range ? `${invoiceNumber}_${range}_${time}` : `${invoiceNumber}_${time}`;
+  // Optional client slug (letters/digits only, hyphen separated)
+  const slug = clientName
+    ? clientName
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .replace(/\s+/g, '-')
+    : undefined;
+  const parts = [invoiceNumber, range, slug, time].filter(Boolean) as string[];
+  const base = parts.join('_');
   return `${base}.${extension}`;
 }
 

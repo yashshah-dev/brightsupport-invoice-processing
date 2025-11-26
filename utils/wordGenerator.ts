@@ -529,7 +529,8 @@ export async function generateWord(invoiceData: InvoiceData): Promise<void> {
       invoiceData.invoiceNumber,
       'docx',
       invoiceData.startDate,
-      invoiceData.endDate
+      invoiceData.endDate,
+      invoiceData.clientInfo?.name
     )
   );
 }
