@@ -43,6 +43,7 @@ export default function InvoiceGenerator() {
   // Recalculate invoice when form data or day categories change
   useEffect(() => {
     if (
+      formData?.invoiceDate &&
       formData?.startDate &&
       formData?.endDate &&
       formData?.clientInfo.name &&
@@ -51,7 +52,7 @@ export default function InvoiceGenerator() {
     ) {
       buildInvoiceData(
         generateInvoiceNumber(),
-        new Date(),
+        formData.invoiceDate,
         formData.startDate,
         formData.endDate,
         formData.clientInfo,

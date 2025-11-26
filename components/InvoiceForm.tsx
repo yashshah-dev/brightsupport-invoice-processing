@@ -11,6 +11,7 @@ interface InvoiceFormProps {
 }
 
 export interface FormData {
+  invoiceDate: Date | null;
   startDate: Date | null;
   endDate: Date | null;
   hoursPerDay: number;
@@ -20,6 +21,7 @@ export interface FormData {
 
 export default function InvoiceForm({ onFormChange }: InvoiceFormProps) {
   const [formData, setFormData] = useState<FormData>({
+    invoiceDate: new Date(),
     startDate: null,
     endDate: null,
     hoursPerDay: 8,
@@ -113,7 +115,22 @@ export default function InvoiceForm({ onFormChange }: InvoiceFormProps) {
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-700">Service Period</h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Invoice Date *
+            </label>
+            <DatePicker
+              selected={formData.invoiceDate}
+              onChange={(date) => updateFormData({ invoiceDate: date })}
+              dateFormat="dd/MM/yyyy"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholderText="Select invoice date"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">Date invoice is issued</p>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Start Date *
