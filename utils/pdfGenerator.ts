@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { InvoiceData } from '@/types/invoice';
 import { formatCurrency, formatInvoiceDate } from './dateUtils';
 import { COMPANY_INFO } from '@/constants/invoice';
+import { asset } from '@/utils/asset';
 import { format } from 'date-fns';
 
 // Helper function to group dates by category
@@ -32,16 +33,26 @@ const formatDatesList = (dates: Date[]) => {
     .join(', ');
 };
 
-export function generatePDF(invoiceData: InvoiceData): void {
+export async function generatePDF(invoiceData: InvoiceData): Promise<void> {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
   
   // Add logo to header (centered)
   try {
-    const logoWidth = 50;
-    const logoHeight = 25;
-    const logoX = (pageWidth - logoWidth) / 2;
-    doc.addImage('/logo/header-logo.png', 'PNG', logoX, 10, logoWidth, logoHeight);
+    const logoUrl = asset('/logo/header-logo.png');
+    const resp = await fetch(logoUrl);
+    if (resp.ok) {
+      const blob = await resp.blob();
+      const reader = new FileReader();
+      const dataUrl: string = await new Promise((resolve) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+      const logoWidth = 50;
+      const logoHeight = 25;
+      const logoX = (pageWidth - logoWidth) / 2;
+      doc.addImage(dataUrl, 'PNG', logoX, 10, logoWidth, logoHeight);
+    }
   } catch (error) {
     console.warn('Logo not loaded in PDF');
   }

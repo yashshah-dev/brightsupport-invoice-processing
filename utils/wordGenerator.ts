@@ -18,7 +18,7 @@ import { InvoiceData } from '@/types/invoice';
 import { formatCurrency, formatInvoiceDate } from './dateUtils';
 import { COMPANY_INFO } from '@/constants/invoice';
 import { format } from 'date-fns';
-import * as fs from 'fs';
+import { asset } from '@/utils/asset';
 
 // Helper function to group dates by category
 const groupDatesByCategory = (invoiceData: InvoiceData) => {
@@ -53,7 +53,7 @@ export async function generateWord(invoiceData: InvoiceData): Promise<void> {
   // Load logo image
   let logoData: Uint8Array | undefined;
   try {
-    const response = await fetch('/logo/header-logo.png');
+    const response = await fetch(asset('/logo/header-logo.png'));
     if (response.ok) {
       const arrayBuffer = await response.arrayBuffer();
       logoData = new Uint8Array(arrayBuffer);

@@ -1,6 +1,7 @@
 import { InvoiceData } from '@/types/invoice';
 import { formatCurrency, formatInvoiceDate } from './dateUtils';
 import { COMPANY_INFO } from '@/constants/invoice';
+import { asset } from '@/utils/asset';
 import { format } from 'date-fns';
 
 // Helper function to group dates by category
@@ -35,8 +36,8 @@ export async function generateHTML(invoiceData: InvoiceData): Promise<void> {
   
   // Load logo image as base64
   let logoDataUrl: string | undefined;
-  try {
-    const response = await fetch('/logo/header-logo.png');
+    try {
+        const response = await fetch(asset('/logo/header-logo.png'));
     if (response.ok) {
       const blob = await response.blob();
       const reader = new FileReader();

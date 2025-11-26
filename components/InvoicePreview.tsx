@@ -4,6 +4,7 @@ import React from 'react';
 import { InvoiceData, DayCategory } from '@/types/invoice';
 import { formatCurrency, formatInvoiceDate } from '@/utils/dateUtils';
 import { COMPANY_INFO } from '@/constants/invoice';
+import { asset } from '@/utils/asset';
 import { format } from 'date-fns';
 
 interface InvoicePreviewProps {
@@ -66,7 +67,7 @@ export default function InvoicePreview({ invoiceData, dayCategories }: InvoicePr
         {/* Logo */}
         <div className="flex-shrink-0 mx-8">
           <img 
-            src="/logo/header-logo.png" 
+            src={asset('/logo/header-logo.png')} 
             alt="Bright Support Logo" 
             className="h-32 w-auto object-contain"
           />
