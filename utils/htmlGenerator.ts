@@ -306,10 +306,13 @@ export async function generateHTML(invoiceData: InvoiceData): Promise<void> {
   const a = document.createElement('a');
   a.href = url;
   
-  const timestamp = format(new Date(), 'yyyy-MM-dd_HHmmss');
-  const start = format(invoiceData.startDate, 'ddMMMyy');
-  const end = format(invoiceData.endDate, 'ddMMMyy');
-  a.download = `${timestamp}_${invoiceData.invoiceNumber}_${start}_${end}.html`;
+    const { generateInvoiceFilename } = require('./dateUtils');
+    a.download = generateInvoiceFilename(
+        invoiceData.invoiceNumber,
+        'html',
+        invoiceData.startDate,
+        invoiceData.endDate
+    );
   
   document.body.appendChild(a);
   a.click();
