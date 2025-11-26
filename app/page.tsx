@@ -49,7 +49,7 @@ export default function InvoiceGenerator() {
       formData?.clientInfo.ndisNumber &&
       dayCategories.length > 0
     ) {
-      const invoice = buildInvoiceData(
+      buildInvoiceData(
         generateInvoiceNumber(),
         new Date(),
         formData.startDate,
@@ -58,8 +58,7 @@ export default function InvoiceGenerator() {
         formData.hoursPerDay,
         formData.travelKmPerDay,
         dayCategories
-      );
-      setInvoiceData(invoice);
+      ).then(invoice => setInvoiceData(invoice));
     } else {
       setInvoiceData(null);
     }
