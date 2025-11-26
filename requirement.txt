@@ -1,0 +1,45 @@
+Help me build UI for brightsupport business invoice generation.
+
+
+In the sample folder, there are few invoice for reference. 
+
+There are s category of items. 
+1. Week Days 
+    Code - 04_104_0125_6_1-  Access Community Social and Rec Activity - Weekdays Daytime 
+    Additional Info – 1pm to 5 pm 2 staff (4+4 Hours)
+    Cost per hour : AUD $67.56
+
+2. Saturday:
+    Code - 04_105_0125_6_1-  Access Community Social and Rec Activity - Standard Daytime - Saturday
+    Additional Info – 1pm to 5 pm 2 staff (4+4 Hours)
+    Cost per hour : $ 95.07
+
+ 
+3. Sunday:
+    Code - 04_106_0125_6_1-  Access Community Social and Rec Activity Standard - Sunday Daytime 
+    Additional Info – 1pm to 5 pm 2 staff (4+4 Hours)
+    Cost per hour : $ 122.59
+
+
+4. Public Holiday: Consider Victoria, Australia public Holiday list
+    Code - 04_102_0125_6_1-  Access Community Social and Rec Activity Standard - Public Holiday - Daytime
+    Additional Info – 1pm to 5 pm 2 staff (4+4 Hours)
+    Cost per hour : $ 150.10
+
+5. Travel:
+    Code : 04_799_0125_6_1 – Provider Travel Non Labor Cost 
+    Cost per hour : $ 1
+
+
+
+
+Requirement:
+Need an ability to select invoice start date and end date. 
+For a given period, calculate days based on above 5 cateogry. Caclualte total cost based on hours. defaul to 8 hours per day.
+For travel consider daily average km between 25-30 km. 
+Need an ability to download in pdf and doc format. 
+need an ability to exclude particular days between selected period 
+place a calender for user reference in the UI.
+Keep the format same as in sample invoice. 
+
+
