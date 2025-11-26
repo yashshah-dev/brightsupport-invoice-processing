@@ -76,6 +76,11 @@ export default function InvoiceForm({ onFormChange }: InvoiceFormProps) {
     saveFormData(formData);
   }, [formData]);
 
+  // Notify parent of initial form data on mount
+  useEffect(() => {
+    onFormChange(formData);
+  }, []); // Only run once on mount
+
   const updateFormData = (updates: Partial<FormData>) => {
     const newFormData = { ...formData, ...updates };
     setFormData(newFormData);
