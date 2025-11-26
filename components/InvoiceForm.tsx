@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { ClientInfo } from '@/types/invoice';
@@ -19,21 +19,62 @@ export interface FormData {
   clientInfo: ClientInfo;
 }
 
+const STORAGE_KEY = 'invoice_form_data';
+
+// Load saved form data from localStorage
+function loadSavedFormData(): Partial<FormData> | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return null;
+    const parsed = JSON.parse(saved);
+    // Convert date strings back to Date objects (but skip start/end dates)
+    return {
+      ...parsed,
+      invoiceDate: parsed.invoiceDate ? new Date(parsed.invoiceDate) : null,
+      startDate: null, // Always start fresh
+      endDate: null, // Always start fresh
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Save form data to localStorage
+function saveFormData(data: FormData) {
+  if (typeof window === 'undefined') return;
+  try {
+    // Don't persist start and end dates
+    const { startDate, endDate, ...dataToSave } = data;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+  } catch (error) {
+    console.warn('Failed to save form data:', error);
+  }
+}
+
 export default function InvoiceForm({ onFormChange }: InvoiceFormProps) {
-  const [formData, setFormData] = useState<FormData>({
-    invoiceDate: new Date(),
-    startDate: null,
-    endDate: null,
-    hoursPerDay: 8,
-    travelKmPerDay: 27.5,
-    clientInfo: {
-      name: '',
-      ndisNumber: '',
-      address: '',
-      planManager: DEFAULT_CLIENT_INFO.planManager,
-      planManagerEmail: DEFAULT_CLIENT_INFO.planManagerEmail,
-    },
+  const [formData, setFormData] = useState<FormData>(() => {
+    const saved = loadSavedFormData();
+    return {
+      invoiceDate: saved?.invoiceDate || new Date(),
+      startDate: saved?.startDate || null,
+      endDate: saved?.endDate || null,
+      hoursPerDay: saved?.hoursPerDay || 8,
+      travelKmPerDay: saved?.travelKmPerDay || 27.5,
+      clientInfo: saved?.clientInfo || {
+        name: '',
+        ndisNumber: '',
+        address: '',
+        planManager: DEFAULT_CLIENT_INFO.planManager,
+        planManagerEmail: DEFAULT_CLIENT_INFO.planManagerEmail,
+      },
+    };
   });
+
+  // Auto-save form data whenever it changes
+  useEffect(() => {
+    saveFormData(formData);
+  }, [formData]);
 
   const updateFormData = (updates: Partial<FormData>) => {
     const newFormData = { ...formData, ...updates };
@@ -46,9 +87,42 @@ export default function InvoiceForm({ onFormChange }: InvoiceFormProps) {
     updateFormData({ clientInfo: newClientInfo });
   };
 
+  const clearForm = () => {
+    if (confirm('Are you sure you want to clear all form data?')) {
+      const defaultData: FormData = {
+        invoiceDate: new Date(),
+        startDate: null,
+        endDate: null,
+        hoursPerDay: 8,
+        travelKmPerDay: 27.5,
+        clientInfo: {
+          name: '',
+          ndisNumber: '',
+          address: '',
+          planManager: DEFAULT_CLIENT_INFO.planManager,
+          planManagerEmail: DEFAULT_CLIENT_INFO.planManagerEmail,
+        },
+      };
+      setFormData(defaultData);
+      onFormChange(defaultData);
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6 space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Invoice Details</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">Invoice Details</h2>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-500">✓ Auto-saved</span>
+          <button
+            onClick={clearForm}
+            className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+          >
+            Clear Form
+          </button>
+        </div>
+      </div>
 
       {/* Client Information */}
       <div className="space-y-4">
