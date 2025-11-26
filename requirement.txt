@@ -43,3 +43,8 @@ place a calender for user reference in the UI.
 Keep the format same as in sample invoice. 
 
 
+
+
+Need an ability to for curd operation on  service code, description , rate
+need an ability to map service category to the service code 
+use default mapping presnet in the file.

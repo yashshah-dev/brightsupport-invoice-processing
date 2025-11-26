@@ -12,13 +12,16 @@ import { buildInvoiceData } from '@/utils/invoiceCalculations';
 import { generatePDF } from '@/utils/pdfGenerator';
 import { generateWord } from '@/utils/wordGenerator';
 import { generateHTML } from '@/utils/htmlGenerator';
+import dynamic from 'next/dynamic';
+
+const ServiceCatalogAdmin = dynamic(() => import('@/components/ServiceCatalogAdmin'), { ssr: false });
 import { isSameDay } from 'date-fns';
 
 export default function InvoiceGenerator() {
   const [formData, setFormData] = useState<FormData | null>(null);
   const [dayCategories, setDayCategories] = useState<DayCategory[]>([]);
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
-  const [activeTab, setActiveTab] = useState<'form' | 'preview'>('form');
+  const [activeTab, setActiveTab] = useState<'form' | 'preview' | 'catalog'>('form');
   const [manualHolidays, setManualHolidays] = useState<Array<{ date: Date; name: string }>>([]);
 
   // Update day categories when dates or manual holidays change
@@ -145,6 +148,16 @@ export default function InvoiceGenerator() {
             >
               Invoice Preview
             </button>
+              <button
+                onClick={() => setActiveTab('catalog')}
+                className={`px-6 py-2 rounded-md font-medium transition-all ${
+                  activeTab === 'catalog'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                Service Catalog
+              </button>
           </div>
         </div>
 
@@ -299,7 +312,7 @@ export default function InvoiceGenerator() {
               </div>
             )}
           </div>
-        ) : (
+        ) : activeTab === 'preview' ? (
           <div className="space-y-6">
             {invoiceData && <InvoicePreview invoiceData={invoiceData} dayCategories={dayCategories} />}
 
@@ -387,6 +400,10 @@ export default function InvoiceGenerator() {
                 </button>
               </div>
             </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <ServiceCatalogAdmin />
           </div>
         )}
       </div>

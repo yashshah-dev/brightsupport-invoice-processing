@@ -1,0 +1,42 @@
+[
+  {
+    "id": "weekday-default",
+    "category": "weekday",
+    "code": "04_104_0125_6_1",
+    "description": "Access Community Social and Rec Activity - Weekdays Daytime (1pm–5pm, 2 staff, 4+4 hrs)",
+    "rate": 67.56,
+    "active": true
+  },
+  {
+    "id": "saturday-default",
+    "category": "saturday",
+    "code": "04_105_0125_6_1",
+    "description": "Access Community Social and Rec Activity - Standard Daytime - Saturday (1pm–5pm, 2 staff, 4+4 hrs)",
+    "rate": 95.07,
+    "active": true
+  },
+  {
+    "id": "sunday-default",
+    "category": "sunday",
+    "code": "04_106_0125_6_1",
+    "description": "Access Community Social and Rec Activity Standard - Sunday Daytime (1pm–5pm, 2 staff, 4+4 hrs)",
+    "rate": 122.59,
+    "active": true
+  },
+  {
+    "id": "publicHoliday-default",
+    "category": "publicHoliday",
+    "code": "04_102_0125_6_1",
+    "description": "Access Community Social and Rec Activity Standard - Public Holiday - Daytime (1pm–5pm, 2 staff, 4+4 hrs)",
+    "rate": 150.1,
+    "active": true
+  },
+  {
+    "id": "travel-default",
+    "category": "travel",
+    "code": "04_799_0125_6_1",
+    "description": "Provider Travel Non Labor Cost",
+    "rate": 1.0,
+    "active": true
+  }
+]
