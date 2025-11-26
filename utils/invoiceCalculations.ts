@@ -2,6 +2,38 @@ import { InvoiceLineItem, InvoiceData, DayCategory } from '@/types/invoice';
 import { GST_RATE } from '@/constants/invoice';
 import { countDaysByCategory } from './dateUtils';
 import { loadServices, mapCategoryToCode, ServiceItem } from './services';
+import { format } from 'date-fns';
+
+/**
+ * Generate daily travel breakdown with variation while maintaining exact total
+ * @param totalKm - Target total kilometers
+ * @param numDays - Number of days to distribute across
+ * @param avgKm - Average km per day (used as baseline)
+ * @returns Array of daily km values that sum to exactly totalKm
+ */
+function generateTravelBreakdown(totalKm: number, numDays: number, avgKm: number): number[] {
+  if (numDays === 0) return [];
+  if (numDays === 1) return [totalKm];
+  
+  const variance = 5; // ±5km variation from average
+  const breakdown: number[] = [];
+  let remaining = totalKm;
+  
+  // Generate random values for all days except the last
+  for (let i = 0; i < numDays - 1; i++) {
+    const min = Math.max(avgKm - variance, 0);
+    const max = avgKm + variance;
+    // Random value between min and max
+    const dailyKm = Math.round(min + Math.random() * (max - min));
+    breakdown.push(dailyKm);
+    remaining -= dailyKm;
+  }
+  
+  // Last day gets whatever is remaining to match exact total
+  breakdown.push(Math.max(0, remaining));
+  
+  return breakdown;
+}
 
 /**
  * Get first active service for a category
@@ -79,15 +111,34 @@ export async function calculateLineItems(
     }
   }
   
-  // Calculate travel costs
+  // Calculate travel costs with daily breakdown
   const totalDays = Object.values(dayCounts).reduce((sum, count) => sum + count, 0);
   if (totalDays > 0) {
     const travelService = getServiceForCategory(categoryMap, 'travel');
     if (travelService) {
       const totalKm = totalDays * travelKmPerDay;
+      const dailyBreakdown = generateTravelBreakdown(totalKm, totalDays, travelKmPerDay);
+      
+      // Get actual service dates (non-excluded)
+      const serviceDates = dayCategories
+        .filter(d => !d.isExcluded)
+        .map(d => d.date)
+        .sort((a, b) => a.getTime() - b.getTime());
+      
+      // Build detailed breakdown description
+      const breakdownLines = dailyBreakdown
+        .map((km, idx) => {
+          const date = serviceDates[idx];
+          if (!date) return null;
+          const dateStr = format(date, 'dd/MM/yy');
+          return `${dateStr}: ${km}km`;
+        })
+        .filter(Boolean)
+        .join(', ');
+      
       lineItems.push({
         serviceCode: travelService.code,
-        description: `${travelService.description} - ${totalDays} day(s) x ${travelKmPerDay} km`,
+        description: `${travelService.description} - Total ${totalKm}km (${breakdownLines})`,
         quantity: totalKm,
         unitPrice: travelService.rate,
         total: totalKm * travelService.rate,
