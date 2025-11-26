@@ -116,12 +116,20 @@ export function generateInvoiceNumber(date: Date = new Date()): string {
 }
 
 /**
- * Generate filename with timestamp and invoice number
- * Format: YYYY-MM-DD_HHmmss_INV-YYYY-MMDD-XXXX
+ * Generate filename with timestamp, invoice number, and service period dates
+ * Format: YYYY-MM-DD_HHmmss_INV-YYYY-MMDD-XXXX_StartDate_EndDate
  */
-export function generateInvoiceFilename(invoiceNumber: string, extension: string = 'pdf'): string {
+export function generateInvoiceFilename(invoiceNumber: string, extension: string = 'pdf', startDate?: Date, endDate?: Date): string {
   const timestamp = format(new Date(), 'yyyy-MM-dd_HHmmss');
-  return `${timestamp}_${invoiceNumber}.${extension}`;
+  let filename = `${timestamp}_${invoiceNumber}`;
+  
+  if (startDate && endDate) {
+    const start = format(startDate, 'ddMMMyy');
+    const end = format(endDate, 'ddMMMyy');
+    filename += `_${start}_${end}`;
+  }
+  
+  return `${filename}.${extension}`;
 }
 
 /**

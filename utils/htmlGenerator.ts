@@ -307,7 +307,9 @@ export async function generateHTML(invoiceData: InvoiceData): Promise<void> {
   a.href = url;
   
   const timestamp = format(new Date(), 'yyyy-MM-dd_HHmmss');
-  a.download = `${timestamp}_${invoiceData.invoiceNumber}.html`;
+  const start = format(invoiceData.startDate, 'ddMMMyy');
+  const end = format(invoiceData.endDate, 'ddMMMyy');
+  a.download = `${timestamp}_${invoiceData.invoiceNumber}_${start}_${end}.html`;
   
   document.body.appendChild(a);
   a.click();

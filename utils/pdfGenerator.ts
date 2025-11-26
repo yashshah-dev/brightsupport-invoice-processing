@@ -220,5 +220,5 @@ export async function generatePDF(invoiceData: InvoiceData): Promise<void> {
   
   // Save the PDF with timestamp and invoice number
   const { generateInvoiceFilename } = require('./dateUtils');
-  doc.save(generateInvoiceFilename(invoiceData.invoiceNumber, 'pdf'));
+  doc.save(generateInvoiceFilename(invoiceData.invoiceNumber, 'pdf', invoiceData.startDate, invoiceData.endDate));
 }

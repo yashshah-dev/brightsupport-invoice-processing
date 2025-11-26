@@ -523,5 +523,7 @@ export async function generateWord(invoiceData: InvoiceData): Promise<void> {
   
   const blob = await Packer.toBlob(doc);
   const timestamp = format(new Date(), 'yyyy-MM-dd_HHmmss');
-  saveAs(blob, `${timestamp}_${invoiceData.invoiceNumber}.docx`);
+  const start = format(invoiceData.startDate, 'ddMMMyy');
+  const end = format(invoiceData.endDate, 'ddMMMyy');
+  saveAs(blob, `${timestamp}_${invoiceData.invoiceNumber}_${start}_${end}.docx`);
 }
