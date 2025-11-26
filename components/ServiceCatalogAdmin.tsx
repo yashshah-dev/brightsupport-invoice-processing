@@ -47,6 +47,12 @@ export default function ServiceCatalogAdmin() {
 
   function onSaveEditing() {
     if (!editing) return;
+    const { validateService } = require('@/utils/services');
+    const errors = validateService(editing, items);
+    if (errors.length > 0) {
+      alert(errors.map((e: any) => `${String(e.field)}: ${e.message}`).join('\n'));
+      return;
+    }
     const exists = items.some(i => i.id === editing.id);
     const next = exists ? items.map(i => (i.id === editing.id ? editing : i)) : [editing, ...items];
     setItems(next);
@@ -74,6 +80,22 @@ export default function ServiceCatalogAdmin() {
         <div className="flex gap-2">
           <button onClick={onAdd} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Add Service</button>
           <button onClick={() => exportServicesFile(items)} className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800">Export JSON</button>
+          <label className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 cursor-pointer">
+            Import JSON
+            <input type="file" accept="application/json" className="hidden" onChange={async (e) => {
+              const f = e.target.files?.[0];
+              if (!f) return;
+              try {
+                const { importCatalog } = await import('@/utils/services');
+                const next = await importCatalog(f);
+                setItems(next);
+              } catch (err: any) {
+                alert(err?.message || 'Failed to import catalog');
+              } finally {
+                e.target.value = '';
+              }
+            }} />
+          </label>
         </div>
       </div>
 

@@ -56,6 +56,42 @@ export function createEmptyService(): ServiceItem {
   };
 }
 
+export type ValidationError = { field: keyof ServiceItem | 'catalog'; message: string };
+
+export function validateService(item: ServiceItem, existing: ServiceItem[]): ValidationError[] {
+  const errors: ValidationError[] = [];
+  if (!item.code || item.code.trim().length === 0) errors.push({ field: 'code', message: 'Code is required' });
+  if (!item.description || item.description.trim().length === 0) errors.push({ field: 'description', message: 'Description is required' });
+  if (item.rate < 0) errors.push({ field: 'rate', message: 'Rate must be non-negative' });
+  if (!item.category) errors.push({ field: 'category', message: 'Category is required' });
+  const dup = existing.find((e) => e.id !== item.id && e.category === item.category && e.code.trim().toLowerCase() === item.code.trim().toLowerCase());
+  if (dup) errors.push({ field: 'code', message: 'Duplicate code within category' });
+  return errors;
+}
+
+export function validateCatalog(items: ServiceItem[]): ValidationError[] {
+  const errors: ValidationError[] = [];
+  // unique (category, code) pair
+  const seen = new Set<string>();
+  for (const i of items) {
+    const key = `${i.category}|${i.code.trim().toLowerCase()}`;
+    if (seen.has(key)) errors.push({ field: 'catalog', message: `Duplicate entry: ${i.category} + ${i.code}` });
+    seen.add(key);
+  }
+  return errors;
+}
+
+export async function importCatalog(file: File): Promise<ServiceItem[]> {
+  const text = await file.text();
+  const parsed = JSON.parse(text) as ServiceItem[];
+  const errs = validateCatalog(parsed);
+  if (errs.length > 0) {
+    throw new Error(`Invalid catalog: ${errs.map(e => e.message).join('; ')}`);
+  }
+  saveServices(parsed);
+  return parsed;
+}
+
 export function mapCategoryToCode(items: ServiceItem[]): Record<ServiceCategory, ServiceItem[]> {
   return items.reduce((acc, item) => {
     const arr = acc[item.category] ?? [];
