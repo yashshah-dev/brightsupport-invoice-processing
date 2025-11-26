@@ -64,7 +64,7 @@ export default function ServiceCatalogAdmin() {
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex flex-col sm:flex-row gap-3 items-center justify-between mb-4">
         <div className="flex gap-2 items-center">
-          <select value={filter} onChange={e => setFilter(e.target.value as any)} className="border rounded px-3 py-2">
+          <select value={filter} onChange={e => setFilter(e.target.value as any)} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
             <option value="all">All Categories</option>
             {categories.map(c => (
               <option key={c.value} value={c.value}>{c.label}</option>
@@ -74,7 +74,7 @@ export default function ServiceCatalogAdmin() {
             placeholder="Search code/description"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            className="border rounded px-3 py-2 w-64"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
           />
         </div>
         <div className="flex gap-2">
@@ -135,7 +135,7 @@ export default function ServiceCatalogAdmin() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <label className="flex flex-col">
               <span className="text-xs text-gray-600">Category</span>
-              <select value={editing.category} onChange={e => setEditing({ ...editing, category: e.target.value as ServiceCategory })} className="border rounded px-3 py-2">
+              <select value={editing.category} onChange={e => setEditing({ ...editing, category: e.target.value as ServiceCategory })} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 {categories.map(c => (
                   <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
@@ -143,15 +143,15 @@ export default function ServiceCatalogAdmin() {
             </label>
             <label className="flex flex-col">
               <span className="text-xs text-gray-600">Code</span>
-              <input value={editing.code} onChange={e => setEditing({ ...editing, code: e.target.value })} className="border rounded px-3 py-2" />
+              <input value={editing.code} onChange={e => setEditing({ ...editing, code: e.target.value })} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
             </label>
             <label className="flex flex-col md:col-span-2">
               <span className="text-xs text-gray-600">Description</span>
-              <input value={editing.description} onChange={e => setEditing({ ...editing, description: e.target.value })} className="border rounded px-3 py-2" />
+              <input value={editing.description} onChange={e => setEditing({ ...editing, description: e.target.value })} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
             </label>
             <label className="flex flex-col">
               <span className="text-xs text-gray-600">Rate (AUD)</span>
-              <input type="number" step="0.01" value={editing.rate} onChange={e => setEditing({ ...editing, rate: parseFloat(e.target.value) || 0 })} className="border rounded px-3 py-2" />
+              <input type="number" step="0.01" value={editing.rate} onChange={e => setEditing({ ...editing, rate: parseFloat(e.target.value) || 0 })} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
             </label>
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={editing.active} onChange={e => setEditing({ ...editing, active: e.target.checked })} />
