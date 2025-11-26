@@ -122,16 +122,22 @@ export default function InvoicePreview({ invoiceData, dayCategories }: InvoicePr
           </thead>
           <tbody>
             {invoiceData.lineItems.map((item, index) => {
-              // Determine which dates apply to this line item based on description
-              let dates: Date[] = [];
-              if (item.description.toLowerCase().includes('weekday')) {
-                dates = datesByCategory.weekday;
-              } else if (item.description.toLowerCase().includes('saturday')) {
-                dates = datesByCategory.saturday;
-              } else if (item.description.toLowerCase().includes('sunday')) {
-                dates = datesByCategory.sunday;
-              } else if (item.description.toLowerCase().includes('public holiday')) {
-                dates = datesByCategory.publicHoliday;
+              // Use item.dates if available (for travel breakdown), otherwise determine from description
+              let datesStr = '';
+              if (item.dates) {
+                datesStr = item.dates;
+              } else {
+                let dates: Date[] = [];
+                if (item.description.toLowerCase().includes('weekday')) {
+                  dates = datesByCategory.weekday;
+                } else if (item.description.toLowerCase().includes('saturday')) {
+                  dates = datesByCategory.saturday;
+                } else if (item.description.toLowerCase().includes('sunday')) {
+                  dates = datesByCategory.sunday;
+                } else if (item.description.toLowerCase().includes('public holiday')) {
+                  dates = datesByCategory.publicHoliday;
+                }
+                datesStr = formatDatesList(dates);
               }
 
               return (
@@ -139,7 +145,7 @@ export default function InvoicePreview({ invoiceData, dayCategories }: InvoicePr
                   <td className="py-4 px-3 font-mono text-xs text-gray-700">{item.serviceCode}</td>
                   <td className="py-4 px-3 text-gray-800">{item.description}</td>
                   <td className="py-4 px-3 text-gray-600 text-xs max-w-xs">
-                    <div className="break-words">{formatDatesList(dates)}</div>
+                    <div className="break-words">{datesStr}</div>
                   </td>
                   <td className="py-4 px-3 text-right text-gray-800">{item.quantity}</td>
                   <td className="py-4 px-3 text-right text-gray-800">{formatCurrency(item.unitPrice)}</td>

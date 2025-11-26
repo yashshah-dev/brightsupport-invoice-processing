@@ -21,6 +21,8 @@ export interface InvoiceLineItem {
   quantity: number; // number of days or hours
   unitPrice: number;
   total: number;
+  dates?: string; // Optional: formatted dates for this line item (used in dates column)
+  dailyBreakdown?: Array<{ date: Date; km: number }>; // Optional: for travel breakdown
 }
 
 export interface ClientInfo {

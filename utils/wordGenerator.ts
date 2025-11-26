@@ -399,16 +399,22 @@ export async function generateWord(invoiceData: InvoiceData): Promise<void> {
             }),
             // Data Rows
             ...invoiceData.lineItems.map(item => {
-              // Determine which dates apply to this line item
-              let dates: Date[] = [];
-              if (item.description.toLowerCase().includes('weekday')) {
-                dates = datesByCategory.weekday;
-              } else if (item.description.toLowerCase().includes('saturday')) {
-                dates = datesByCategory.saturday;
-              } else if (item.description.toLowerCase().includes('sunday')) {
-                dates = datesByCategory.sunday;
-              } else if (item.description.toLowerCase().includes('public holiday')) {
-                dates = datesByCategory.publicHoliday;
+              // Use item.dates if available (for travel breakdown), otherwise determine from description
+              let datesStr = '';
+              if (item.dates) {
+                datesStr = item.dates;
+              } else {
+                let dates: Date[] = [];
+                if (item.description.toLowerCase().includes('weekday')) {
+                  dates = datesByCategory.weekday;
+                } else if (item.description.toLowerCase().includes('saturday')) {
+                  dates = datesByCategory.saturday;
+                } else if (item.description.toLowerCase().includes('sunday')) {
+                  dates = datesByCategory.sunday;
+                } else if (item.description.toLowerCase().includes('public holiday')) {
+                  dates = datesByCategory.publicHoliday;
+                }
+                datesStr = formatDatesList(dates);
               }
               
               return new TableRow({
@@ -433,7 +439,7 @@ export async function generateWord(invoiceData: InvoiceData): Promise<void> {
                   }),
                   new TableCell({
                     children: [new Paragraph({ 
-                      children: [new TextRun({ text: formatDatesList(dates), size: 14 })],
+                      children: [new TextRun({ text: datesStr, size: 14 })],
                       alignment: AlignmentType.LEFT,
                     })],
                     verticalAlign: VerticalAlign.CENTER,

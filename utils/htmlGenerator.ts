@@ -242,23 +242,29 @@ export async function generateHTML(invoiceData: InvoiceData): Promise<void> {
             </thead>
             <tbody>
                 ${invoiceData.lineItems.map(item => {
-                    // Determine which dates apply to this line item
-                    let dates: Date[] = [];
-                    if (item.description.toLowerCase().includes('weekday')) {
-                        dates = datesByCategory.weekday;
-                    } else if (item.description.toLowerCase().includes('saturday')) {
-                        dates = datesByCategory.saturday;
-                    } else if (item.description.toLowerCase().includes('sunday')) {
-                        dates = datesByCategory.sunday;
-                    } else if (item.description.toLowerCase().includes('public holiday')) {
-                        dates = datesByCategory.publicHoliday;
+                    // Use item.dates if available (for travel breakdown), otherwise determine from description
+                    let datesStr = '';
+                    if (item.dates) {
+                        datesStr = item.dates;
+                    } else {
+                        let dates: Date[] = [];
+                        if (item.description.toLowerCase().includes('weekday')) {
+                            dates = datesByCategory.weekday;
+                        } else if (item.description.toLowerCase().includes('saturday')) {
+                            dates = datesByCategory.saturday;
+                        } else if (item.description.toLowerCase().includes('sunday')) {
+                            dates = datesByCategory.sunday;
+                        } else if (item.description.toLowerCase().includes('public holiday')) {
+                            dates = datesByCategory.publicHoliday;
+                        }
+                        datesStr = formatDatesList(dates);
                     }
 
                     return `
                         <tr>
                             <td class="item-code">${item.serviceCode}</td>
                             <td class="description">${item.description}</td>
-                            <td class="dates">${formatDatesList(dates)}</td>
+                            <td class="dates">${datesStr}</td>
                             <td class="quantity">${item.quantity}</td>
                             <td class="rate">${formatCurrency(item.unitPrice)}</td>
                             <td class="amount">${formatCurrency(item.total)}</td>

@@ -125,8 +125,8 @@ export async function calculateLineItems(
         .map(d => d.date)
         .sort((a, b) => a.getTime() - b.getTime());
       
-      // Build detailed breakdown description
-      const breakdownLines = dailyBreakdown
+      // Build dates column with km breakdown
+      const datesBreakdown = dailyBreakdown
         .map((km, idx) => {
           const date = serviceDates[idx];
           if (!date) return null;
@@ -136,12 +136,22 @@ export async function calculateLineItems(
         .filter(Boolean)
         .join(', ');
       
+      // Create breakdown array for structured data
+      const breakdownArray = dailyBreakdown
+        .map((km, idx) => ({
+          date: serviceDates[idx],
+          km,
+        }))
+        .filter(item => item.date);
+      
       lineItems.push({
         serviceCode: travelService.code,
-        description: `${travelService.description} - Total ${totalKm}km (${breakdownLines})`,
+        description: `${travelService.description}`,
         quantity: totalKm,
         unitPrice: travelService.rate,
         total: totalKm * travelService.rate,
+        dates: datesBreakdown,
+        dailyBreakdown: breakdownArray,
       });
     }
   }
