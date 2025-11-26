@@ -111,6 +111,11 @@ export async function generatePDF(invoiceData: InvoiceData): Promise<void> {
     doc.text('Plan Manager: ', 15, yPos);
     doc.setFont('helvetica', 'normal');
     doc.text(invoiceData.clientInfo.planManager, 45, yPos);
+    
+    if (invoiceData.clientInfo.planManagerEmail) {
+      yPos += 5;
+      doc.text(`Email: ${invoiceData.clientInfo.planManagerEmail}`, 15, yPos);
+    }
   }
   
   // Service Period
@@ -188,13 +193,30 @@ export async function generatePDF(invoiceData: InvoiceData): Promise<void> {
   doc.text('TOTAL:', totalsX, finalY + 7);
   doc.text(formatCurrency(invoiceData.total), pageWidth - 20, finalY + 7, { align: 'right' });
   
+  // Bank Details Section
+  const bankY = finalY + 20;
+  doc.setFillColor(245, 245, 245); // Light gray background
+  doc.rect(15, bankY - 4, pageWidth - 30, 25, 'F');
+  
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Payment Details:', 20, bankY + 2);
+  
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Account Name: ${COMPANY_INFO.bankDetails.accountName}`, 20, bankY + 8);
+  doc.text(`BSB: ${COMPANY_INFO.bankDetails.bsb}`, 20, bankY + 13);
+  doc.text(`Account Number: ${COMPANY_INFO.bankDetails.accountNumber}`, 20, bankY + 18);
+  
   // Footer
+  const footerY = doc.internal.pageSize.height - 20;
   doc.setDrawColor(200, 200, 200);
-  doc.line(15, doc.internal.pageSize.height - 20, pageWidth - 15, doc.internal.pageSize.height - 20);
+  doc.line(15, footerY, pageWidth - 15, footerY);
   doc.setFontSize(8);
   doc.setTextColor(120, 120, 120);
-  doc.text('Thank you for your business!', pageWidth / 2, doc.internal.pageSize.height - 15, { align: 'center' });
-  doc.text(`For queries, please contact ${COMPANY_INFO.email}`, pageWidth / 2, doc.internal.pageSize.height - 10, { align: 'center' });
+  doc.text('Thank you for your business!', pageWidth / 2, footerY + 5, { align: 'center' });
+  doc.text(`For queries, please contact ${COMPANY_INFO.email}`, pageWidth / 2, footerY + 10, { align: 'center' });
   
   // Save the PDF with timestamp and invoice number
   const { generateInvoiceFilename } = require('./dateUtils');
