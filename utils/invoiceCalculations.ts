@@ -17,20 +17,33 @@ function generateTravelBreakdown(totalKm: number, numDays: number, avgKm: number
   
   const variance = 5; // ±5km variation from average
   const breakdown: number[] = [];
-  let remaining = totalKm;
   
-  // Generate random values for all days except the last
-  for (let i = 0; i < numDays - 1; i++) {
+  // Generate random values for ALL days with variation
+  for (let i = 0; i < numDays; i++) {
     const min = Math.max(avgKm - variance, 0);
     const max = avgKm + variance;
     // Random value between min and max
     const dailyKm = Math.round(min + Math.random() * (max - min));
     breakdown.push(dailyKm);
-    remaining -= dailyKm;
   }
   
-  // Last day gets whatever is remaining to match exact total
-  breakdown.push(Math.max(0, remaining));
+  // Calculate current total and difference from target
+  const currentTotal = breakdown.reduce((sum, km) => sum + km, 0);
+  const diff = totalKm - currentTotal;
+  
+  // Distribute the difference across all days to keep them balanced
+  if (diff !== 0) {
+    const adjustment = Math.floor(diff / numDays);
+    const remainder = diff % numDays;
+    
+    for (let i = 0; i < numDays; i++) {
+      breakdown[i] += adjustment;
+      // Add remainder to first few days
+      if (i < Math.abs(remainder)) {
+        breakdown[i] += remainder > 0 ? 1 : -1;
+      }
+    }
+  }
   
   return breakdown;
 }
