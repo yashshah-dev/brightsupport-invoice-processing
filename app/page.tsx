@@ -58,7 +58,8 @@ export default function InvoiceGenerator() {
         formData.clientInfo,
         formData.hoursPerDay,
         formData.travelKmPerDay,
-        dayCategories
+        dayCategories,
+        formData.perDayHours
       ).then(invoice => setInvoiceData(invoice));
     } else {
       setInvoiceData(null);

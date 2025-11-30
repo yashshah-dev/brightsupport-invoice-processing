@@ -6,8 +6,8 @@ const nextConfig = {
     unoptimized: true,
   },
   // Uncomment and set basePath when deploying to GitHub Pages with repo name
-  basePath: '/brightsupport-invoice-processing',
-  assetPrefix: '/brightsupport-invoice-processing',
+  // basePath: '/brightsupport-invoice-processing',
+  // assetPrefix: '/brightsupport-invoice-processing',
 }
 
 module.exports = nextConfig

@@ -40,6 +40,8 @@ export interface InvoiceData {
   endDate: Date;
   clientInfo: ClientInfo;
   hoursPerDay: number;
+  // Optional map of ISO date string -> hours for per-day overrides
+  perDayHours?: Record<string, number>;
   travelKmPerDay: number;
   excludedDates: Date[];
   dayCategories: DayCategory[];

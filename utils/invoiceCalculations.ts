@@ -62,70 +62,66 @@ function getServiceForCategory(categoryMap: Record<string, ServiceItem[]>, categ
 export async function calculateLineItems(
   dayCategories: DayCategory[],
   hoursPerDay: number,
-  travelKmPerDay: number
+  travelKmPerDay: number,
+  perDayHours?: Record<string, number>
 ): Promise<InvoiceLineItem[]> {
-  const dayCounts = countDaysByCategory(dayCategories);
   const lineItems: InvoiceLineItem[] = [];
   
   // Load services from catalog (localStorage override or default JSON)
   const services = await loadServices();
   const categoryMap = mapCategoryToCode(services);
   
-  // Calculate for each day type
-  if (dayCounts.weekday > 0) {
-    const service = getServiceForCategory(categoryMap, 'weekday');
-    if (service) {
-      lineItems.push({
-        serviceCode: service.code,
-        description: `${service.description} - ${dayCounts.weekday} day(s) x ${hoursPerDay} hours`,
-        quantity: dayCounts.weekday * hoursPerDay,
-        unitPrice: service.rate,
-        total: dayCounts.weekday * hoursPerDay * service.rate,
-      });
-    }
+  // Build hours-per-day for each service date (respect perDayHours if provided)
+  const serviceDates = dayCategories.filter(d => !d.isExcluded).map(d => ({ date: d.date, type: d.type }));
+
+  // Group hours by category
+  const hoursByCategory: Record<string, { days: number; hours: number }>= {
+    weekday: { days: 0, hours: 0 },
+    saturday: { days: 0, hours: 0 },
+    sunday: { days: 0, hours: 0 },
+    publicHoliday: { days: 0, hours: 0 },
+  };
+
+  for (const d of serviceDates) {
+    const iso = d.date.toISOString().slice(0,10);
+    const hours = (perDayHours && perDayHours[iso] !== undefined) ? perDayHours[iso] : hoursPerDay;
+    if (hours <= 0) continue; // skip days with zero hours
+    const catKey = d.type;
+    if (!hoursByCategory[catKey]) hoursByCategory[catKey] = { days: 0, hours: 0 };
+    hoursByCategory[catKey].days += 1;
+    hoursByCategory[catKey].hours += hours;
   }
-  
-  if (dayCounts.saturday > 0) {
-    const service = getServiceForCategory(categoryMap, 'saturday');
-    if (service) {
-      lineItems.push({
-        serviceCode: service.code,
-        description: `${service.description} - ${dayCounts.saturday} day(s) x ${hoursPerDay} hours`,
-        quantity: dayCounts.saturday * hoursPerDay,
-        unitPrice: service.rate,
-        total: dayCounts.saturday * hoursPerDay * service.rate,
-      });
-    }
-  }
-  
-  if (dayCounts.sunday > 0) {
-    const service = getServiceForCategory(categoryMap, 'sunday');
-    if (service) {
-      lineItems.push({
-        serviceCode: service.code,
-        description: `${service.description} - ${dayCounts.sunday} day(s) x ${hoursPerDay} hours`,
-        quantity: dayCounts.sunday * hoursPerDay,
-        unitPrice: service.rate,
-        total: dayCounts.sunday * hoursPerDay * service.rate,
-      });
-    }
-  }
-  
-  if (dayCounts.publicHoliday > 0) {
-    const service = getServiceForCategory(categoryMap, 'publicHoliday');
-    if (service) {
-      lineItems.push({
-        serviceCode: service.code,
-        description: `${service.description} - ${dayCounts.publicHoliday} day(s) x ${hoursPerDay} hours`,
-        quantity: dayCounts.publicHoliday * hoursPerDay,
-        unitPrice: service.rate,
-        total: dayCounts.publicHoliday * hoursPerDay * service.rate,
-      });
+
+  // Push line items per category based on aggregated hours
+  const categories = ['weekday','saturday','sunday','publicHoliday'];
+  for (const cat of categories) {
+    const agg = hoursByCategory[cat];
+    if (agg && agg.days > 0) {
+      const service = getServiceForCategory(categoryMap, cat);
+      if (service) {
+        const avgHours = agg.hours / agg.days;
+        const hoursDesc = agg.days === 1 
+          ? `${agg.hours} hours`
+          : (Math.abs(avgHours - Math.round(avgHours)) < 0.01)
+            ? `${agg.days} day(s) x ${Math.round(avgHours)} hours`
+            : `${agg.hours} hours total`;
+        lineItems.push({
+          serviceCode: service.code,
+          description: `${service.description} - ${hoursDesc}`,
+          quantity: agg.hours,
+          unitPrice: service.rate,
+          total: agg.hours * service.rate,
+        });
+      }
     }
   }
   
   // Calculate travel costs with daily breakdown
-  const totalDays = Object.values(dayCounts).reduce((sum, count) => sum + count, 0);
+  const totalDays = serviceDates.filter(d => {
+    const iso = d.date.toISOString().slice(0,10);
+    const hours = (perDayHours && perDayHours[iso] !== undefined) ? perDayHours[iso] : hoursPerDay;
+    return hours > 0;
+  }).length;
   if (totalDays > 0) {
     const travelService = getServiceForCategory(categoryMap, 'travel');
     if (travelService) {
@@ -195,8 +191,10 @@ export async function buildInvoiceData(
   hoursPerDay: number,
   travelKmPerDay: number,
   dayCategories: DayCategory[]
+  ,
+  perDayHours?: Record<string, number>
 ): Promise<InvoiceData> {
-  const lineItems = await calculateLineItems(dayCategories, hoursPerDay, travelKmPerDay);
+  const lineItems = await calculateLineItems(dayCategories, hoursPerDay, travelKmPerDay, perDayHours);
   const { subtotal, gst, total } = calculateInvoiceTotals(lineItems);
   const excludedDates = dayCategories.filter(d => d.isExcluded).map(d => d.date);
   
@@ -207,6 +205,7 @@ export async function buildInvoiceData(
     endDate,
     clientInfo,
     hoursPerDay,
+    perDayHours,
     travelKmPerDay,
     excludedDates,
     dayCategories,
