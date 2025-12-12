@@ -211,10 +211,6 @@ export async function generateHTML(invoiceData: InvoiceData): Promise<void> {
                 <div>${COMPANY_INFO.address}</div>
                 <div>${COMPANY_INFO.phone}</div>
                 <div>${COMPANY_INFO.email}</div>
-                <div style="margin-top: 8px;"><strong>Bank Details</strong></div>
-                <div>${COMPANY_INFO.bankDetails.accountName}</div>
-                <div>BSB: ${COMPANY_INFO.bankDetails.bsb}</div>
-                <div>Acc: ${COMPANY_INFO.bankDetails.accountNumber}</div>
             </div>
 
             <div class="logo">
