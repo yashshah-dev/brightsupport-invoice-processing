@@ -44,11 +44,8 @@ export function validateInvoice(invoice: InvoiceData): ValidationResult {
     // Accumulate for subtotal check
     subtotalCalculated += item.total;
 
-    // Separate km from hours based on service code
-    // Travel items have 'TRAVEL' or 'travel' in the code
-    const isTravelItem = item.serviceCode.includes('TRAVEL') || item.serviceCode.toLowerCase().includes('travel');
-    
-    if (isTravelItem) {
+    // Separate km from hours based on category field
+    if (item.category === 'travel') {
       totalKmCalculated += item.quantity; // quantity is km for travel
     } else {
       totalHoursCalculated += item.quantity; // quantity is hours for services

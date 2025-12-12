@@ -111,6 +111,7 @@ export async function calculateLineItems(
           quantity: agg.hours,
           unitPrice: service.rate,
           total: agg.hours * service.rate,
+          category: cat as any,
         });
       }
     }
@@ -159,6 +160,7 @@ export async function calculateLineItems(
         quantity: totalKm,
         unitPrice: travelService.rate,
         total: totalKm * travelService.rate,
+        category: 'travel',
         dates: datesBreakdown,
         dailyBreakdown: breakdownArray,
       });
