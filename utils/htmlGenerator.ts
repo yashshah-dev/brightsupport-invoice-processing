@@ -27,7 +27,7 @@ const formatDatesList = (dates: Date[]) => {
   if (dates.length === 0) return 'None';
   return dates
     .sort((a, b) => a.getTime() - b.getTime())
-    .map(date => format(date, 'dd/MM/yyyy'))
+    .map(date => format(date, 'dd/MM/yy'))
     .join(', ');
 };
 
@@ -160,6 +160,20 @@ export async function generateHTML(invoiceData: InvoiceData): Promise<void> {
             font-weight: bold;
             font-size: 14px;
         }
+        .payment-details {
+            background: #f5f5f5;
+            padding: 12px 15px;
+            margin: 20px 0;
+            font-size: 10px;
+            border-left: 4px solid #1e40af;
+        }
+        .payment-details-title {
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+        .payment-detail-line {
+            margin: 3px 0;
+        }
         .footer {
             text-align: center;
             margin-top: 30px;
@@ -278,6 +292,13 @@ export async function generateHTML(invoiceData: InvoiceData): Promise<void> {
             <div class="total-row">
                 TOTAL: ${formatCurrency(invoiceData.total)}
             </div>
+        </div>
+
+        <div class="payment-details">
+            <div class="payment-details-title">Payment Details:</div>
+            <div class="payment-detail-line">Account Name: ${COMPANY_INFO.bankDetails.accountName}</div>
+            <div class="payment-detail-line">BSB: ${COMPANY_INFO.bankDetails.bsb}</div>
+            <div class="payment-detail-line">Account Number: ${COMPANY_INFO.bankDetails.accountNumber}</div>
         </div>
 
         <div class="footer">
