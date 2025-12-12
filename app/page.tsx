@@ -44,6 +44,9 @@ export default function InvoiceGenerator() {
 
   // Recalculate invoice when form data or day categories change
   useEffect(() => {
+    // Reset validation whenever form data changes
+    setValidationResult(null);
+    
     if (
       formData?.invoiceDate &&
       formData?.startDate &&
@@ -73,6 +76,7 @@ export default function InvoiceGenerator() {
   };
 
   const handleToggleDay = (date: Date) => {
+    setValidationResult(null);
     setDayCategories((prev) =>
       prev.map((day) =>
         isSameDay(day.date, date) ? { ...day, isExcluded: !day.isExcluded } : day
@@ -81,10 +85,12 @@ export default function InvoiceGenerator() {
   };
 
   const handleAddHoliday = (date: Date, name: string) => {
+    setValidationResult(null);
     setManualHolidays((prev) => [...prev, { date, name }]);
   };
 
   const handleRemoveHoliday = (date: Date) => {
+    setValidationResult(null);
     setManualHolidays((prev) => prev.filter((h) => !isSameDay(h.date, date)));
   };
 
