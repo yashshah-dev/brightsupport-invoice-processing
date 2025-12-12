@@ -12,6 +12,7 @@ import { buildInvoiceData } from '@/utils/invoiceCalculations';
 import { generatePDF } from '@/utils/pdfGenerator';
 import { generateWord } from '@/utils/wordGenerator';
 import { generateHTML } from '@/utils/htmlGenerator';
+import { validateInvoice, ValidationResult } from '@/utils/invoiceValidator';
 import dynamic from 'next/dynamic';
 
 const ServiceCatalogAdmin = dynamic(() => import('@/components/ServiceCatalogAdmin'), { ssr: false });
@@ -23,6 +24,7 @@ export default function InvoiceGenerator() {
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
   const [activeTab, setActiveTab] = useState<'form' | 'preview' | 'catalog'>('form');
   const [manualHolidays, setManualHolidays] = useState<Array<{ date: Date; name: string }>>([]);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
 
   // Update day categories when dates or manual holidays change
   useEffect(() => {
@@ -84,6 +86,13 @@ export default function InvoiceGenerator() {
 
   const handleRemoveHoliday = (date: Date) => {
     setManualHolidays((prev) => prev.filter((h) => !isSameDay(h.date, date)));
+  };
+
+  const handleValidateInvoice = () => {
+    if (invoiceData) {
+      const result = validateInvoice(invoiceData);
+      setValidationResult(result);
+    }
   };
 
   const handleExportPDF = () => {
@@ -194,9 +203,60 @@ export default function InvoiceGenerator() {
                   dayCategories={dayCategories}
                 />
 
-                {/* Action Buttons */}
+                {/* Validation Section */}
                 <div className="bg-white rounded-lg shadow-md p-6">
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <div className="mb-4">
+                    <button
+                      onClick={handleValidateInvoice}
+                      className="w-full px-4 py-3 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Validate All Calculations
+                    </button>
+                  </div>
+
+                  {validationResult && (
+                    <div className={`p-4 rounded-lg ${validationResult.isValid ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                      {validationResult.isValid ? (
+                        <div>
+                          <p className="text-green-800 font-semibold mb-2">✓ All calculations are correct!</p>
+                          <div className="text-sm text-green-700 space-y-1">
+                            <p>Total Hours: {validationResult.summary.totalHoursCalculated} hours</p>
+                            <p>Total KM: {validationResult.summary.totalKmCalculated} km</p>
+                            <p>Subtotal: ${validationResult.summary.subtotalCalculated.toFixed(2)}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-red-800 font-semibold mb-3">✗ Validation Errors Found:</p>
+                          <div className="space-y-2 text-sm text-red-700">
+                            {validationResult.errors.map((error, idx) => (
+                              <div key={idx} className="p-2 bg-red-100 rounded">
+                                <p className="font-semibold capitalize">{error.type}:</p>
+                                <p>{error.message}</p>
+                                {error.expected !== undefined && error.actual !== undefined && (
+                                  <p className="text-xs mt-1">
+                                    Expected: {error.expected} | Actual: {error.actual}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-red-200 text-xs text-red-600">
+                            <p>Please review the errors above and adjust the form accordingly.</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Buttons - Only enabled if validation passes */}
+                {validationResult && validationResult.isValid && (
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <button
                       onClick={handleExportPDF}
                       className="flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors shadow-md"
@@ -282,8 +342,27 @@ export default function InvoiceGenerator() {
                       </svg>
                       Preview Invoice
                     </button>
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* Validation Warning - If not validated yet */}
+                {!validationResult && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <p className="text-amber-800 text-sm">
+                      <span className="font-semibold">⚠️ Validation Required:</span> Click "Validate All Calculations" above before downloading to ensure all hours, km, and totals are correct.
+                    </p>
+                  </div>
+                )}
+
+                {/* Validation Failed Warning */}
+                {validationResult && !validationResult.isValid && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p className="text-red-800 text-sm">
+                      <span className="font-semibold">❌ Calculations Invalid:</span> Preview and download buttons are disabled until all validation errors are fixed.
+                    </p>
+                  </div>
+                )}
               </>
             )}
 
