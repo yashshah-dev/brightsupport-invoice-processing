@@ -9,10 +9,9 @@ import ManualHolidaySelector from '@/components/ManualHolidaySelector';
 import { DayCategory, InvoiceData } from '@/types/invoice';
 import { categorizeDaysInRange, generateInvoiceNumber } from '@/utils/dateUtils';
 import { buildInvoiceData } from '@/utils/invoiceCalculations';
-import { generatePDF, generatePDFBytes } from '@/utils/pdfGenerator';
+import { generatePDF } from '@/utils/pdfGenerator';
 import { generateWord } from '@/utils/wordGenerator';
 import { generateHTML } from '@/utils/htmlGenerator';
-import { downloadEditablePDF } from '@/utils/editablePdfGenerator';
 import { validateInvoice, ValidationResult } from '@/utils/invoiceValidator';
 import dynamic from 'next/dynamic';
 
@@ -105,18 +104,6 @@ export default function InvoiceGenerator() {
   const handleExportPDF = () => {
     if (invoiceData) {
       generatePDF(invoiceData);
-    }
-  };
-
-  const handleExportEditablePDF = async () => {
-    if (invoiceData) {
-      try {
-        const pdfBytes = await generatePDFBytes(invoiceData);
-        await downloadEditablePDF(pdfBytes, invoiceData);
-      } catch (error) {
-        console.error('Error generating editable PDF:', error);
-        alert('Failed to generate editable PDF. Please try again.');
-      }
     }
   };
 
@@ -308,27 +295,6 @@ export default function InvoiceGenerator() {
                     </button>
 
                     <button
-                      onClick={handleExportEditablePDF}
-                      className="flex items-center justify-center gap-2 px-6 py-3 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors shadow-md"
-                      title="Download PDF with editable form fields"
-                    >
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                      </svg>
-                      Editable PDF
-                    </button>
-
-                    <button
                       onClick={handleExportWord}
                       className="hidden flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-md"
                     >
@@ -488,27 +454,6 @@ export default function InvoiceGenerator() {
                     />
                   </svg>
                   Download PDF
-                </button>
-
-                <button
-                  onClick={handleExportEditablePDF}
-                  className="flex items-center justify-center gap-2 px-6 py-3 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors shadow-md"
-                  title="Download PDF with editable form fields"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
-                  </svg>
-                  Editable PDF
                 </button>
 
                 <button
