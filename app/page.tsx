@@ -221,11 +221,22 @@ export default function InvoiceGenerator() {
                     <div className={`p-4 rounded-lg ${validationResult.isValid ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
                       {validationResult.isValid ? (
                         <div>
-                          <p className="text-green-800 font-semibold mb-2">✓ All calculations are correct!</p>
-                          <div className="text-sm text-green-700 space-y-1">
-                            <p>Total Hours: {validationResult.summary.totalHoursCalculated} hours</p>
-                            <p>Total KM: {validationResult.summary.totalKmCalculated} km</p>
-                            <p>Subtotal: ${validationResult.summary.subtotalCalculated.toFixed(2)}</p>
+                          <p className="text-green-800 font-semibold mb-3">✓ All calculations are correct!</p>
+                          <div className="text-sm text-green-700 space-y-2">
+                            <div className="bg-green-100 p-2 rounded">
+                              <p className="font-semibold">Line Item Details:</p>
+                              {invoiceData?.lineItems.map((item, idx) => (
+                                <div key={idx} className="ml-2 text-xs mt-1">
+                                  <p>{item.serviceCode}: {item.quantity} × ${item.unitPrice.toFixed(2)} = ${item.total.toFixed(2)}</p>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="border-t border-green-300 pt-2">
+                              <p>Total Hours: <span className="font-semibold">{validationResult.summary.totalHoursCalculated} hours</span></p>
+                              <p>Total KM: <span className="font-semibold">{validationResult.summary.totalKmCalculated} km</span></p>
+                              <p>Subtotal: <span className="font-semibold">${validationResult.summary.subtotalCalculated.toFixed(2)}</span></p>
+                              <p>Invoice Total: <span className="font-semibold">${invoiceData?.total.toFixed(2)}</span></p>
+                            </div>
                           </div>
                         </div>
                       ) : (
