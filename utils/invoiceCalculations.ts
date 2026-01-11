@@ -123,7 +123,7 @@ export async function calculateLineItems(
     const hours = (perDayHours && perDayHours[iso] !== undefined) ? perDayHours[iso] : hoursPerDay;
     return hours > 0;
   }).length;
-  if (totalDays > 0) {
+  if (totalDays > 0 && travelKmPerDay > 0) {
     const travelService = getServiceForCategory(categoryMap, 'travel');
     if (travelService) {
       const totalKm = totalDays * travelKmPerDay;
