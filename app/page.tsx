@@ -31,8 +31,8 @@ export default function InvoiceGenerator() {
     if (formData?.startDate && formData?.endDate) {
       const manualHolidayDates = manualHolidays.map(h => h.date);
       const categories = categorizeDaysInRange(
-        formData.startDate, 
-        formData.endDate, 
+        formData.startDate,
+        formData.endDate,
         [],
         manualHolidayDates
       );
@@ -46,7 +46,7 @@ export default function InvoiceGenerator() {
   useEffect(() => {
     // Reset validation whenever form data changes
     setValidationResult(null);
-    
+
     if (
       formData?.invoiceDate &&
       formData?.startDate &&
@@ -61,10 +61,10 @@ export default function InvoiceGenerator() {
         formData.startDate,
         formData.endDate,
         formData.clientInfo,
-        formData.hoursPerDay,
+        formData.defaultSchedule,
         formData.travelKmPerDay,
         dayCategories,
-        formData.perDayHours
+        formData.perDaySchedules
       ).then(invoice => setInvoiceData(invoice));
     } else {
       setInvoiceData(null);
@@ -143,37 +143,34 @@ export default function InvoiceGenerator() {
           <div className="bg-white rounded-lg shadow-md p-1 inline-flex">
             <button
               onClick={() => setActiveTab('form')}
-              className={`px-6 py-2 rounded-md font-medium transition-all ${
-                activeTab === 'form'
+              className={`px-6 py-2 rounded-md font-medium transition-all ${activeTab === 'form'
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-600 hover:bg-gray-100'
-              }`}
+                }`}
             >
               Invoice Form
             </button>
             <button
               onClick={() => setActiveTab('preview')}
               disabled={!canGenerate}
-              className={`px-6 py-2 rounded-md font-medium transition-all ${
-                activeTab === 'preview'
+              className={`px-6 py-2 rounded-md font-medium transition-all ${activeTab === 'preview'
                   ? 'bg-blue-600 text-white'
                   : canGenerate
-                  ? 'text-gray-600 hover:bg-gray-100'
-                  : 'text-gray-400 cursor-not-allowed'
-              }`}
+                    ? 'text-gray-600 hover:bg-gray-100'
+                    : 'text-gray-400 cursor-not-allowed'
+                }`}
             >
               Invoice Preview
             </button>
-              <button
-                onClick={() => setActiveTab('catalog')}
-                className={`px-6 py-2 rounded-md font-medium transition-all ${
-                  activeTab === 'catalog'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
+            <button
+              onClick={() => setActiveTab('catalog')}
+              className={`px-6 py-2 rounded-md font-medium transition-all ${activeTab === 'catalog'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
                 }`}
-              >
-                Service Catalog
-              </button>
+            >
+              Service Catalog
+            </button>
           </div>
         </div>
 
@@ -274,91 +271,91 @@ export default function InvoiceGenerator() {
                 {validationResult && validationResult.isValid && (
                   <div className="bg-white rounded-lg shadow-md p-6">
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <button
-                      onClick={handleExportPDF}
-                      className="flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors shadow-md"
-                    >
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                      <button
+                        onClick={handleExportPDF}
+                        className="flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors shadow-md"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                        />
-                      </svg>
-                      Download PDF
-                    </button>
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          />
+                        </svg>
+                        Download PDF
+                      </button>
 
-                    <button
-                      onClick={handleExportWord}
-                      className="hidden flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-md"
-                    >
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                      <button
+                        onClick={handleExportWord}
+                        className="hidden flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-md"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                        />
-                      </svg>
-                      Download Word
-                    </button>
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          />
+                        </svg>
+                        Download Word
+                      </button>
 
-                    <button
-                      onClick={handleExportHTML}
-                      className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors shadow-md"
-                    >
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                      <button
+                        onClick={handleExportHTML}
+                        className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors shadow-md"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
-                        />
-                      </svg>
-                      Download HTML
-                    </button>
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                          />
+                        </svg>
+                        Download HTML
+                      </button>
 
-                    <button
-                      onClick={() => setActiveTab('preview')}
-                      className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors shadow-md"
-                    >
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                      <button
+                        onClick={() => setActiveTab('preview')}
+                        className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors shadow-md"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                        />
-                      </svg>
-                      Preview Invoice
-                    </button>
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                          />
+                        </svg>
+                        Preview Invoice
+                      </button>
                     </div>
                   </div>
                 )}

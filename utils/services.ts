@@ -1,6 +1,6 @@
 import { asset } from '@/utils/asset';
 
-export type ServiceCategory = 'weekday' | 'saturday' | 'sunday' | 'publicHoliday' | 'travel';
+export type ServiceCategory = 'weekday' | 'weekday_evening' | 'weekday_night' | 'saturday' | 'sunday' | 'publicHoliday' | 'travel';
 
 export type ServiceItem = {
   id: string;
@@ -19,7 +19,7 @@ export async function loadServices(): Promise<ServiceItem[]> {
   if (override) {
     try {
       return JSON.parse(override) as ServiceItem[];
-    } catch {}
+    } catch { }
   }
   // Else fetch default JSON from static file (PR-managed)
   const res = await fetch(asset('/data/services.json'));
@@ -100,6 +100,8 @@ export function mapCategoryToCode(items: ServiceItem[]): Record<ServiceCategory,
     return acc;
   }, {
     weekday: [],
+    weekday_evening: [],
+    weekday_night: [],
     saturday: [],
     sunday: [],
     publicHoliday: [],

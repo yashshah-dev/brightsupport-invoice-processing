@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { ClientInfo } from '@/types/invoice';
+import { ClientInfo, DaySchedule } from '@/types/invoice';
 import { DEFAULT_CLIENT_INFO } from '@/constants/invoice';
 
 interface InvoiceFormProps {
@@ -14,13 +14,13 @@ export interface FormData {
   invoiceDate: Date | null;
   startDate: Date | null;
   endDate: Date | null;
-  hoursPerDay: number;
-  perDayHours?: Record<string, number>;
+  defaultSchedule: DaySchedule; // Renamed from hoursPerDay
+  perDaySchedules?: Record<string, DaySchedule>; // Renamed from perDayHours
   travelKmPerDay: number;
   clientInfo: ClientInfo;
 }
 
-const STORAGE_KEY = 'invoice_form_data';
+const STORAGE_KEY = 'invoice_form_data_v2'; // Bump version
 
 // Load saved form data from localStorage
 function loadSavedFormData(): Partial<FormData> | null {
@@ -35,7 +35,7 @@ function loadSavedFormData(): Partial<FormData> | null {
       invoiceDate: parsed.invoiceDate ? new Date(parsed.invoiceDate) : null,
       startDate: null, // Always start fresh
       endDate: null, // Always start fresh
-      perDayHours: parsed.perDayHours || {},
+      perDaySchedules: parsed.perDaySchedules || {},
     };
   } catch {
     return null;
@@ -54,6 +54,8 @@ function saveFormData(data: FormData) {
   }
 }
 
+const EMPTY_SCHEDULE: DaySchedule = { morning: 0, evening: 0, night: 0 };
+
 export default function InvoiceForm({ onFormChange }: InvoiceFormProps) {
   const [formData, setFormData] = useState<FormData>(() => {
     const saved = loadSavedFormData();
@@ -61,9 +63,9 @@ export default function InvoiceForm({ onFormChange }: InvoiceFormProps) {
       invoiceDate: saved?.invoiceDate || new Date(),
       startDate: saved?.startDate || null,
       endDate: saved?.endDate || null,
-      hoursPerDay: saved?.hoursPerDay || 8,
-        perDayHours: saved?.perDayHours || {},
-        travelKmPerDay: saved?.travelKmPerDay || 27.5,
+      defaultSchedule: saved?.defaultSchedule || { morning: 8, evening: 0, night: 0 },
+      perDaySchedules: saved?.perDaySchedules || {},
+      travelKmPerDay: saved?.travelKmPerDay || 27.5,
       clientInfo: saved?.clientInfo || {
         name: '',
         ndisNumber: '',
@@ -116,7 +118,7 @@ export default function InvoiceForm({ onFormChange }: InvoiceFormProps) {
         invoiceDate: new Date(),
         startDate: null,
         endDate: null,
-        hoursPerDay: 8,
+        defaultSchedule: { morning: 8, evening: 0, night: 0 },
         travelKmPerDay: 27.5,
         clientInfo: {
           name: '',
@@ -130,6 +132,12 @@ export default function InvoiceForm({ onFormChange }: InvoiceFormProps) {
       onFormChange(defaultData);
       localStorage.removeItem(STORAGE_KEY);
     }
+  };
+
+  const updateDefaultSchedule = (field: keyof DaySchedule, value: number) => {
+    updateFormData({
+      defaultSchedule: { ...formData.defaultSchedule, [field]: value }
+    });
   };
 
   return (
@@ -150,7 +158,7 @@ export default function InvoiceForm({ onFormChange }: InvoiceFormProps) {
       {/* Client Information */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-700">Client Information</h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -211,7 +219,7 @@ export default function InvoiceForm({ onFormChange }: InvoiceFormProps) {
       {/* Service Period */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-700">Service Period</h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -261,145 +269,134 @@ export default function InvoiceForm({ onFormChange }: InvoiceFormProps) {
 
       {/* Service Configuration */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-700">Service Configuration</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <h3 className="text-lg font-semibold text-gray-700">Service Configuration (Default Daily Schedule)</h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Hours Per Day
-            </label>
-            <div className="flex items-center gap-3">
-              <input
-                type="number"
-                min="0"
-                max="24"
-                step="0.5"
-                value={formData.hoursPerDay}
-                onChange={(e) => {
-                  const v = parseFloat(e.target.value);
-                  updateFormData({ hoursPerDay: isNaN(v) ? 0 : v });
-                }}
-                className="w-28 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                aria-label="Hours per day"
-              />
-              <input
-                type="range"
-                min={0}
-                max={24}
-                step={0.5}
-                value={formData.hoursPerDay}
-                onChange={(e) => updateFormData({ hoursPerDay: parseFloat(e.target.value) })}
-                className="flex-1"
-                aria-label="Adjust hours per day slider"
-              />
-            </div>
-            <div className="flex gap-2 mt-2">
-              <button type="button" onClick={() => updateFormData({ hoursPerDay: 4 })} className="px-2 py-1 bg-gray-100 rounded">Half (4h)</button>
-              <button type="button" onClick={() => updateFormData({ hoursPerDay: 8 })} className="px-2 py-1 bg-gray-100 rounded">Full (8h)</button>
-              <button type="button" onClick={() => updateFormData({ hoursPerDay: 10 })} className="px-2 py-1 bg-gray-100 rounded">Extended (10h)</button>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Default: 8 hours (2 staff x 4 hours). Use slider or presets for quick changes.</p>
-            <div className="mt-3 flex items-center gap-2">
-              <input id="customizeHours" type="checkbox" checked={customizeHours} onChange={e => setCustomizeHours(e.target.checked)} />
-              <label htmlFor="customizeHours" className="text-sm text-gray-700">Customize hours for specific days</label>
-            </div>
-            {customizeHours && formData.startDate && formData.endDate && (
-              <div className="mt-3 border p-3 rounded bg-gray-50">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs text-gray-600">Adjust hours per specific date below.</p>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => {
-                      const dates = getDatesBetween(formData.startDate, formData.endDate);
-                      const next = { ...(formData.perDayHours || {}) };
-                      dates.forEach(d => {
-                        next[d.toISOString().slice(0,10)] = formData.hoursPerDay;
-                      });
-                      updateFormData({ perDayHours: next });
-                    }} className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">Set All to Default</button>
-                    <button type="button" onClick={() => {
-                      const dates = getDatesBetween(formData.startDate, formData.endDate);
-                      const next = { ...(formData.perDayHours || {}) };
-                      dates.forEach(d => {
-                        const iso = d.toISOString().slice(0,10);
-                        const day = d.getDay();
-                        // Weekends (0=Sunday, 6=Saturday) get half hours
-                        if (day === 0 || day === 6) {
-                          next[iso] = Math.max(0, formData.hoursPerDay / 2);
-                        } else {
-                          next[iso] = formData.hoursPerDay;
-                        }
-                      });
-                      updateFormData({ perDayHours: next });
-                    }} className="px-2 py-1 text-xs bg-purple-500 text-white rounded hover:bg-purple-600">Half on Weekends</button>
-                  </div>
-                </div>
-                <div className="max-h-48 overflow-auto mb-3">
-                  {getDatesBetween(formData.startDate, formData.endDate).map((d) => {
-                    const iso = d.toISOString().slice(0,10);
-                    const val = formData.perDayHours?.[iso] ?? formData.hoursPerDay;
-                    const isZero = val === 0;
-                    const day = d.getDay();
-                    const isWeekend = day === 0 || day === 6;
-                    return (
-                      <div key={iso} className={`flex items-center justify-between gap-3 mb-2 p-2 rounded ${isZero ? 'bg-yellow-100' : ''}`}>
-                        <div className="flex items-center gap-2">
-                          <div className="text-sm font-medium">{d.toLocaleDateString()}</div>
-                          <div className="text-xs text-gray-500">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][day]}</div>
-                          {isZero && <span className="text-xs text-orange-600">⚠️ Zero hours</span>}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <input type="number" min="0" max="24" step="0.5" value={val}
-                            onChange={e => {
-                              const v = parseFloat(e.target.value);
-                              const next = { ...(formData.perDayHours || {}) };
-                              next[iso] = isNaN(v) ? 0 : v;
-                              updateFormData({ perDayHours: next });
-                            }}
-                            className="w-20 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500" />
-                          <button type="button" onClick={() => {
-                            const next = { ...(formData.perDayHours || {}) };
-                            next[iso] = formData.hoursPerDay;
-                            updateFormData({ perDayHours: next });
-                          }} className="px-2 py-1 text-xs bg-gray-200 rounded hover:bg-gray-300">Reset</button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="pt-2 border-t">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="font-semibold text-gray-700">Total Hours:</span>
-                    <span className="font-bold text-blue-600">{
-                      getDatesBetween(formData.startDate, formData.endDate).reduce((sum, d) => {
-                        const iso = d.toISOString().slice(0,10);
-                        const val = formData.perDayHours?.[iso] ?? formData.hoursPerDay;
-                        return sum + val;
-                      }, 0).toFixed(1)
-                    }h</span>
-                  </div>
-                </div>
-              </div>
-            )}
+            <label className="block text-sm font-medium text-gray-700 mb-1">Weekday Daytime (6am-8pm)</label>
+            <input type="number" min="0" max="24" step="0.5"
+              value={formData.defaultSchedule.morning}
+              onChange={e => updateDefaultSchedule('morning', parseFloat(e.target.value) || 0)}
+              className="w-full px-3 py-2 border rounded"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Weekday Evening (8pm-12am)</label>
+            <input type="number" min="0" max="24" step="0.5"
+              value={formData.defaultSchedule.evening}
+              onChange={e => updateDefaultSchedule('evening', parseFloat(e.target.value) || 0)}
+              className="w-full px-3 py-2 border rounded"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Night-Time Sleepover (Units)</label>
+            <input type="number" min="0" max="24" step="1"
+              value={formData.defaultSchedule.night}
+              onChange={e => updateDefaultSchedule('night', parseFloat(e.target.value) || 0)}
+              className="w-full px-3 py-2 border rounded"
+            />
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center gap-2 mt-2">
+            <input id="customizeHours" type="checkbox" checked={customizeHours} onChange={e => setCustomizeHours(e.target.checked)} />
+            <label htmlFor="customizeHours" className="text-sm text-gray-700">Customize schedule for specific days</label>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Travel Distance Per Day (km)
-            </label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="0.5"
-              value={formData.travelKmPerDay}
-              onChange={(e) => {
-                const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
-                updateFormData({ travelKmPerDay: isNaN(value) ? 0 : value });
-              }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <p className="text-xs text-gray-500 mt-1">Recommended: 25-30 km</p>
-          </div>
+          {customizeHours && formData.startDate && formData.endDate && (
+            <div className="mt-3 border p-3 rounded bg-gray-50">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs text-gray-600">Adjust hours per specific date below.</p>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => {
+                    updateFormData({ perDaySchedules: {} });
+                  }} className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">Reset All to Default</button>
+                  <button type="button" onClick={() => {
+                    const dates = getDatesBetween(formData.startDate, formData.endDate);
+                    const next = { ...(formData.perDaySchedules || {}) };
+                    dates.forEach(d => {
+                      const iso = d.toISOString().slice(0, 10);
+                      const day = d.getDay();
+                      if (day === 0 || day === 6) {
+                        next[iso] = {
+                          morning: Math.max(0, formData.defaultSchedule.morning / 2),
+                          evening: Math.max(0, formData.defaultSchedule.evening / 2),
+                          night: Math.max(0, formData.defaultSchedule.night / 2),
+                        };
+                      }
+                    });
+                    updateFormData({ perDaySchedules: next });
+                  }} className="px-2 py-1 text-xs bg-purple-500 text-white rounded hover:bg-purple-600">Half on Weekends</button>
+                </div>
+              </div>
+              <div className="max-h-60 overflow-auto mb-3">
+                {getDatesBetween(formData.startDate, formData.endDate).map((d) => {
+                  const iso = d.toISOString().slice(0, 10);
+                  const sched = formData.perDaySchedules?.[iso] ?? formData.defaultSchedule;
+                  const total = sched.morning + sched.evening + sched.night;
+                  const isZero = total === 0;
+                  const day = d.getDay();
+
+                  const updateDay = (field: keyof DaySchedule, val: number) => {
+                    const next = { ...(formData.perDaySchedules || {}) };
+                    const current = next[iso] || { ...formData.defaultSchedule };
+                    current[field] = val;
+                    next[iso] = current;
+                    updateFormData({ perDaySchedules: next });
+                  };
+
+                  const resetDay = () => {
+                    const next = { ...(formData.perDaySchedules || {}) };
+                    delete next[iso];
+                    updateFormData({ perDaySchedules: next });
+                  };
+
+                  return (
+                    <div key={iso} className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-2 p-2 rounded border ${isZero ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-gray-100'}`}>
+                      <div className="flex items-center gap-2 w-32">
+                        <div className="text-sm font-medium">{d.toLocaleDateString()}</div>
+                        <div className="text-xs text-gray-500">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day]}</div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-1">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-gray-500">Daytime</span>
+                          <input type="number" step="0.5" value={sched.morning} onChange={e => updateDay('morning', parseFloat(e.target.value) || 0)} className="w-16 px-1 py-0.5 text-sm border rounded" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-gray-500">Eve</span>
+                          <input type="number" step="0.5" value={sched.evening} onChange={e => updateDay('evening', parseFloat(e.target.value) || 0)} className="w-16 px-1 py-0.5 text-sm border rounded" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-gray-500">Sleepover</span>
+                          <input type="number" step="1" value={sched.night} onChange={e => updateDay('night', parseFloat(e.target.value) || 0)} className="w-16 px-1 py-0.5 text-sm border rounded" />
+                        </div>
+                        <button type="button" onClick={resetDay} className="ml-2 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200" title="Reset to default">↺</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Travel Distance Per Day (km)
+          </label>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            step="0.5"
+            value={formData.travelKmPerDay}
+            onChange={(e) => {
+              const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+              updateFormData({ travelKmPerDay: isNaN(value) ? 0 : value });
+            }}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
         </div>
       </div>
     </div>

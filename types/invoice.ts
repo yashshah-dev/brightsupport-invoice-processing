@@ -34,15 +34,21 @@ export interface ClientInfo {
   planManagerEmail?: string;
 }
 
+export interface DaySchedule {
+  morning: number;
+  evening: number;
+  night: number;
+}
+
 export interface InvoiceData {
   invoiceNumber: string;
   invoiceDate: Date;
   startDate: Date;
   endDate: Date;
   clientInfo: ClientInfo;
-  hoursPerDay: number;
-  // Optional map of ISO date string -> hours for per-day overrides
-  perDayHours?: Record<string, number>;
+  defaultSchedule: DaySchedule; // Replaces hoursPerDay
+  // Map of ISO date string -> DaySchedule for per-day overrides
+  perDaySchedules?: Record<string, DaySchedule>;
   travelKmPerDay: number;
   excludedDates: Date[];
   dayCategories: DayCategory[];

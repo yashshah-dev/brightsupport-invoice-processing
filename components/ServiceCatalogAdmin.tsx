@@ -4,10 +4,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ServiceItem, loadServices, saveServices, createEmptyService, exportServicesFile, ServiceCategory } from '@/utils/services';
 
 const categories: { value: ServiceCategory; label: string }[] = [
-  { value: 'weekday', label: 'Weekday' },
-  { value: 'saturday', label: 'Saturday' },
-  { value: 'sunday', label: 'Sunday' },
-  { value: 'publicHoliday', label: 'Public Holiday' },
+  { value: 'weekday', label: 'Standard - Weekday Daytime' },
+  { value: 'weekday_evening', label: 'Standard - Weekday Evening' },
+  { value: 'weekday_night', label: 'Night-Time Sleepover' },
+  { value: 'saturday', label: 'Standard - Saturday' },
+  { value: 'sunday', label: 'Standard - Sunday' },
+  { value: 'publicHoliday', label: 'Standard - Public Holiday' },
   { value: 'travel', label: 'Travel' },
 ];
 

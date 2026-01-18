@@ -6,9 +6,25 @@ export const SERVICE_CATEGORIES: Record<string, ServiceCategory> = {
     id: 'weekday',
     code: '04_104_0125_6_1',
     name: 'Access Community Social and Rec Activity - Weekdays Daytime',
-    description: '1pm to 5pm 2 staff (4+4 Hours)',
+    description: 'Daytime Support (6am - 8pm)',
     ratePerHour: 67.56,
     defaultHours: 8,
+  },
+  WEEKDAY_EVENING: {
+    id: 'weekday_evening',
+    code: '04_103_0125_6_1',
+    name: 'Access Community Social and Rec Activity - Weekdays Evening',
+    description: 'Evening Support (8pm - 12am)',
+    ratePerHour: 74.56,
+    defaultHours: 0,
+  },
+  WEEKDAY_NIGHT: {
+    id: 'weekday_night',
+    code: '01_011_0107_1_1_N', // Placeholder code
+    name: 'Access Community Social and Rec Activity - Weekdays Night',
+    description: 'Active Overnight Support',
+    ratePerHour: 76.56,
+    defaultHours: 0,
   },
   SATURDAY: {
     id: 'saturday',
