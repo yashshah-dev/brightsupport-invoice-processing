@@ -33,8 +33,8 @@ function loadSavedFormData(): Partial<FormData> | null {
     return {
       ...parsed,
       invoiceDate: parsed.invoiceDate ? new Date(parsed.invoiceDate) : null,
-      startDate: null, // Always start fresh
-      endDate: null, // Always start fresh
+      startDate: parsed.startDate ? new Date(parsed.startDate) : null,
+      endDate: parsed.endDate ? new Date(parsed.endDate) : null,
       perDaySchedules: parsed.perDaySchedules || {},
     };
   } catch {
@@ -46,8 +46,8 @@ function loadSavedFormData(): Partial<FormData> | null {
 function saveFormData(data: FormData) {
   if (typeof window === 'undefined') return;
   try {
-    // Don't persist start and end dates
-    const { startDate, endDate, ...dataToSave } = data;
+    // Persist all data including dates logic
+    const dataToSave = data;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
   } catch (error) {
     console.warn('Failed to save form data:', error);
@@ -370,6 +370,30 @@ export default function InvoiceForm({ onFormChange }: InvoiceFormProps) {
                         <div className="flex flex-col">
                           <span className="text-[10px] text-gray-500">Sleepover</span>
                           <input type="number" step="1" value={sched.night} onChange={e => updateDay('night', parseFloat(e.target.value) || 0)} className="w-16 px-1 py-0.5 text-sm border rounded" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-gray-500">Travel KM</span>
+                          <input
+                            type="number"
+                            step="1"
+                            min="0"
+                            placeholder={formData.travelKmPerDay.toString()}
+                            value={sched.travelKm ?? ''}
+                            onChange={e => {
+                              const val = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                              // @ts-ignore - Update local helper to accept travelKm
+                              const next = { ...(formData.perDaySchedules || {}) };
+                              const current = next[iso] || { ...formData.defaultSchedule };
+                              if (val === undefined) {
+                                delete current.travelKm;
+                              } else {
+                                current.travelKm = val;
+                              }
+                              next[iso] = current;
+                              updateFormData({ perDaySchedules: next });
+                            }}
+                            className="w-16 px-1 py-0.5 text-sm border rounded"
+                          />
                         </div>
                         <button type="button" onClick={resetDay} className="ml-2 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200" title="Reset to default">↺</button>
                       </div>

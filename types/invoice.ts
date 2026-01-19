@@ -38,6 +38,7 @@ export interface DaySchedule {
   morning: number;
   evening: number;
   night: number;
+  travelKm?: number;
 }
 
 export interface InvoiceData {

@@ -6,51 +6,53 @@ import { format } from 'date-fns';
 
 // Helper function to group dates by category
 const groupDatesByCategory = (invoiceData: InvoiceData) => {
-  const grouped: Record<string, Date[]> = {
-    weekday: [],
-    saturday: [],
-    sunday: [],
-    publicHoliday: [],
-  };
+    const grouped: Record<string, Date[]> = {
+        weekday: [],
+        saturday: [],
+        sunday: [],
+        publicHoliday: [],
+    };
 
-  invoiceData.dayCategories.forEach((day) => {
-    if (!day.isExcluded) {
-      grouped[day.type].push(day.date);
-    }
-  });
+    invoiceData.dayCategories.forEach((day) => {
+        if (!day.isExcluded) {
+            grouped[day.type].push(day.date);
+        }
+    });
 
-  return grouped;
+    return grouped;
 };
 
 // Helper function to format dates list for HTML
 const formatDatesList = (dates: Date[]) => {
-  if (dates.length === 0) return 'None';
-  return dates
-    .sort((a, b) => a.getTime() - b.getTime())
-    .map(date => format(date, 'dd/MM/yy'))
-    .join(', ');
+    if (dates.length === 0) return 'None';
+    return dates
+        .sort((a, b) => a.getTime() - b.getTime())
+        .map(date => format(date, 'dd/MM/yy'))
+        .join(', ');
 };
 
 export async function generateHTML(invoiceData: InvoiceData): Promise<void> {
-  const datesByCategory = groupDatesByCategory(invoiceData);
-  
-  // Load logo image as base64
-  let logoDataUrl: string | undefined;
-    try {
-        const response = await fetch(asset('/logo/header-logo.png'));
-    if (response.ok) {
-      const blob = await response.blob();
-      const reader = new FileReader();
-      logoDataUrl = await new Promise((resolve) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-      });
-    }
-  } catch (error) {
-    console.warn('Failed to load logo image:', error);
-  }
+    const datesByCategory = groupDatesByCategory(invoiceData);
 
-  const htmlContent = `
+    // Load logo image as base64
+    let logoDataUrl: string | undefined;
+    try {
+        const logoUrl = asset('/logo/header-logo.png');
+        const absoluteLogoUrl = typeof window !== 'undefined' ? `${window.location.origin}${logoUrl}` : logoUrl;
+        const response = await fetch(absoluteLogoUrl);
+        if (response.ok) {
+            const blob = await response.blob();
+            const reader = new FileReader();
+            logoDataUrl = await new Promise((resolve) => {
+                reader.onload = () => resolve(reader.result as string);
+                reader.readAsDataURL(blob);
+            });
+        }
+    } catch (error) {
+        console.warn('Failed to load logo image:', error);
+    }
+
+    const htmlContent = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -252,25 +254,25 @@ export async function generateHTML(invoiceData: InvoiceData): Promise<void> {
             </thead>
             <tbody>
                 ${invoiceData.lineItems.map(item => {
-                    // Use item.dates if available (for travel breakdown), otherwise determine from description
-                    let datesStr = '';
-                    if (item.dates) {
-                        datesStr = item.dates;
-                    } else {
-                        let dates: Date[] = [];
-                        if (item.description.toLowerCase().includes('weekday')) {
-                            dates = datesByCategory.weekday;
-                        } else if (item.description.toLowerCase().includes('saturday')) {
-                            dates = datesByCategory.saturday;
-                        } else if (item.description.toLowerCase().includes('sunday')) {
-                            dates = datesByCategory.sunday;
-                        } else if (item.description.toLowerCase().includes('public holiday')) {
-                            dates = datesByCategory.publicHoliday;
-                        }
-                        datesStr = formatDatesList(dates);
-                    }
+        // Use item.dates if available (for travel breakdown), otherwise determine from description
+        let datesStr = '';
+        if (item.dates) {
+            datesStr = item.dates;
+        } else {
+            let dates: Date[] = [];
+            if (item.description.toLowerCase().includes('weekday')) {
+                dates = datesByCategory.weekday;
+            } else if (item.description.toLowerCase().includes('saturday')) {
+                dates = datesByCategory.saturday;
+            } else if (item.description.toLowerCase().includes('sunday')) {
+                dates = datesByCategory.sunday;
+            } else if (item.description.toLowerCase().includes('public holiday')) {
+                dates = datesByCategory.publicHoliday;
+            }
+            datesStr = formatDatesList(dates);
+        }
 
-                    return `
+        return `
                         <tr>
                             <td class="item-code">${item.serviceCode}</td>
                             <td class="description">${item.description}</td>
@@ -280,7 +282,7 @@ export async function generateHTML(invoiceData: InvoiceData): Promise<void> {
                             <td class="amount">${formatCurrency(item.total)}</td>
                         </tr>
                     `;
-                }).join('')}
+    }).join('')}
             </tbody>
         </table>
 
@@ -323,12 +325,12 @@ export async function generateHTML(invoiceData: InvoiceData): Promise<void> {
 </body>
 </html>`;
 
-  // Create blob and download with timestamp and invoice number
-  const blob = new Blob([htmlContent], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  
+    // Create blob and download with timestamp and invoice number
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+
     const { generateInvoiceFilename } = require('./dateUtils');
     a.download = generateInvoiceFilename(
         invoiceData.invoiceNumber,
@@ -337,9 +339,9 @@ export async function generateHTML(invoiceData: InvoiceData): Promise<void> {
         invoiceData.endDate,
         invoiceData.clientInfo?.name
     );
-  
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }

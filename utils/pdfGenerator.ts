@@ -36,11 +36,12 @@ const formatDatesList = (dates: Date[]) => {
 export async function generatePDF(invoiceData: InvoiceData): Promise<void> {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
-  
+
   // Add logo to header (centered)
   try {
     const logoUrl = asset('/logo/header-logo.png');
-    const resp = await fetch(logoUrl);
+    const absoluteLogoUrl = typeof window !== 'undefined' ? `${window.location.origin}${logoUrl}` : logoUrl;
+    const resp = await fetch(absoluteLogoUrl);
     if (resp.ok) {
       const blob = await resp.blob();
       const reader = new FileReader();
@@ -56,13 +57,13 @@ export async function generatePDF(invoiceData: InvoiceData): Promise<void> {
   } catch (error) {
     console.warn('Logo not loaded in PDF');
   }
-  
+
   // Header - Company Info (Left side)
   doc.setFontSize(20);
   doc.setTextColor(30, 64, 175); // Blue color
   doc.setFont('helvetica', 'bold');
   doc.text(COMPANY_INFO.name, 15, 45);
-  
+
   doc.setFontSize(8);
   doc.setTextColor(100, 100, 100);
   doc.setFont('helvetica', 'normal');
@@ -71,53 +72,53 @@ export async function generatePDF(invoiceData: InvoiceData): Promise<void> {
   doc.text(`Email: ${COMPANY_INFO.email}`, 15, 59);
   doc.setFont('helvetica', 'bold');
   doc.text(COMPANY_INFO.abn, 15, 63);
-  
+
   // INVOICE Title and Number (Right side)
   doc.setFontSize(18);
   doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'bold');
   doc.text('INVOICE', pageWidth - 15, 45, { align: 'right' });
-  
+
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.text(`Invoice #: ${invoiceData.invoiceNumber}`, pageWidth - 15, 51, { align: 'right' });
   doc.text(`Date: ${formatInvoiceDate(invoiceData.invoiceDate)}`, pageWidth - 15, 56, { align: 'right' });
-  
+
   // Line separator
   doc.setDrawColor(200, 200, 200);
   doc.line(15, 68, pageWidth - 15, 68);
-  
+
   // Bill To Section
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.text('BILL TO:', 15, 78);
-  
+
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.text(invoiceData.clientInfo.name, 15, 85);
-  
+
   doc.setFont('helvetica', 'normal');
   let yPos = 90;
   doc.text(`NDIS Number: ${invoiceData.clientInfo.ndisNumber}`, 15, yPos);
-  
+
   if (invoiceData.clientInfo.address) {
     yPos += 5;
     doc.text(invoiceData.clientInfo.address, 15, yPos);
   }
-  
+
   if (invoiceData.clientInfo.planManager) {
     yPos += 5;
     doc.setFont('helvetica', 'bold');
     doc.text('Plan Manager: ', 15, yPos);
     doc.setFont('helvetica', 'normal');
     doc.text(invoiceData.clientInfo.planManager, 45, yPos);
-    
+
     if (invoiceData.clientInfo.planManagerEmail) {
       yPos += 5;
       doc.text(`Email: ${invoiceData.clientInfo.planManagerEmail}`, 15, yPos);
     }
   }
-  
+
   // Service Period
   yPos += 10;
   doc.setFillColor(239, 246, 255); // Light blue
@@ -128,11 +129,11 @@ export async function generatePDF(invoiceData: InvoiceData): Promise<void> {
     20,
     yPos + 2
   );
-  
+
   // Line Items Table
   yPos += 15;
   const datesByCategory = groupDatesByCategory(invoiceData);
-  
+
   const tableData = invoiceData.lineItems.map(item => {
     // Use item.dates if available (for travel breakdown), otherwise determine from description
     let datesStr = '';
@@ -151,7 +152,7 @@ export async function generatePDF(invoiceData: InvoiceData): Promise<void> {
       }
       datesStr = formatDatesList(dates);
     }
-    
+
     return [
       item.serviceCode,
       item.description,
@@ -161,7 +162,7 @@ export async function generatePDF(invoiceData: InvoiceData): Promise<void> {
       formatCurrency(item.total),
     ];
   });
-  
+
   autoTable(doc, {
     startY: yPos,
     head: [['Item Code', 'Description', 'Dates', 'Qty', 'Rate', 'Amount']],
@@ -185,11 +186,11 @@ export async function generatePDF(invoiceData: InvoiceData): Promise<void> {
       5: { cellWidth: 25, halign: 'right', fontStyle: 'bold' },
     },
   });
-  
+
   // Totals Section
   const finalY = (doc as any).lastAutoTable.finalY + 10;
   const totalsX = pageWidth - 80;
-  
+
   // Total with background
   doc.setFillColor(30, 64, 175); // Blue
   doc.rect(totalsX - 5, finalY, 70, 10, 'F');
@@ -198,23 +199,23 @@ export async function generatePDF(invoiceData: InvoiceData): Promise<void> {
   doc.setFont('helvetica', 'bold');
   doc.text('TOTAL:', totalsX, finalY + 7);
   doc.text(formatCurrency(invoiceData.total), pageWidth - 20, finalY + 7, { align: 'right' });
-  
+
   // Bank Details Section
   const bankY = finalY + 20;
   doc.setFillColor(245, 245, 245); // Light gray background
   doc.rect(15, bankY - 4, pageWidth - 30, 25, 'F');
-  
+
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.text('Payment Details:', 20, bankY + 2);
-  
+
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.text(`Account Name: ${COMPANY_INFO.bankDetails.accountName}`, 20, bankY + 8);
   doc.text(`BSB: ${COMPANY_INFO.bankDetails.bsb}`, 20, bankY + 13);
   doc.text(`Account Number: ${COMPANY_INFO.bankDetails.accountNumber}`, 20, bankY + 18);
-  
+
   // Footer
   const footerY = doc.internal.pageSize.height - 20;
   doc.setDrawColor(200, 200, 200);
@@ -223,7 +224,7 @@ export async function generatePDF(invoiceData: InvoiceData): Promise<void> {
   doc.setTextColor(120, 120, 120);
   doc.text('Thank you for your business!', pageWidth / 2, footerY + 5, { align: 'center' });
   doc.text(`For queries, please contact ${COMPANY_INFO.email}`, pageWidth / 2, footerY + 10, { align: 'center' });
-  
+
   // Save the PDF with timestamp and invoice number
   const { generateInvoiceFilename } = require('./dateUtils');
   doc.save(

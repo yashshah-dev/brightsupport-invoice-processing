@@ -4,49 +4,7 @@ import { countDaysByCategory } from './dateUtils';
 import { loadServices, mapCategoryToCode, ServiceItem } from './services';
 import { format } from 'date-fns';
 
-/**
- * Generate daily travel breakdown with variation while maintaining exact total
- * @param totalKm - Target total kilometers
- * @param numDays - Number of days to distribute across
- * @param avgKm - Average km per day (used as baseline)
- * @returns Array of daily km values that sum to exactly totalKm
- */
-function generateTravelBreakdown(totalKm: number, numDays: number, avgKm: number): number[] {
-  if (numDays === 0) return [];
-  if (numDays === 1) return [totalKm];
 
-  const variance = 5; // ±5km variation from average
-  const breakdown: number[] = [];
-
-  // Generate random values for ALL days with variation
-  for (let i = 0; i < numDays; i++) {
-    const min = Math.max(avgKm - variance, 0);
-    const max = avgKm + variance;
-    // Random value between min and max
-    const dailyKm = Math.round(min + Math.random() * (max - min));
-    breakdown.push(dailyKm);
-  }
-
-  // Calculate current total and difference from target
-  const currentTotal = breakdown.reduce((sum, km) => sum + km, 0);
-  const diff = totalKm - currentTotal;
-
-  // Distribute the difference across all days to keep them balanced
-  if (diff !== 0) {
-    const adjustment = Math.floor(diff / numDays);
-    const remainder = diff - (numDays * adjustment);
-
-    for (let i = 0; i < numDays; i++) {
-      breakdown[i] += adjustment;
-      // Add remainder to first few days
-      if (i < remainder) {
-        breakdown[i] += 1;
-      }
-    }
-  }
-
-  return breakdown;
-}
 
 /**
  * Get first active service for a category
@@ -162,44 +120,56 @@ export async function calculateLineItems(
   if (totalDays > 0 && travelKmPerDay > 0) {
     const travelService = getServiceForCategory(categoryMap, 'travel');
     if (travelService) {
-      const totalKm = totalDays * travelKmPerDay;
-      const dailyBreakdown = generateTravelBreakdown(totalKm, totalDays, travelKmPerDay);
+      // Calculate totalKm and build dailyBreakdown deterministically
+      const breakdowns: { date: Date; km: number }[] = [];
+      let totalKm = 0;
 
-      // Get actual service dates (non-excluded)
-      const serviceDates = dayCategories
+      // Iterate through all service dates to calculate specific KM per day
+      // sort dates first
+      const sortedServiceDates = dayCategories
         .filter(d => !d.isExcluded)
         .map(d => d.date)
         .sort((a, b) => a.getTime() - b.getTime());
 
-      // Build dates column with km breakdown
-      const datesBreakdown = dailyBreakdown
-        .map((km, idx) => {
-          const date = serviceDates[idx];
-          if (!date) return null;
-          const dateStr = format(date, 'dd/MM/yy');
-          return `${dateStr}: ${km}km`;
-        })
-        .filter(Boolean)
-        .join(', ');
+      for (const date of sortedServiceDates) {
+        const iso = date.toISOString().slice(0, 10);
+        const schedule = (perDaySchedules && perDaySchedules[iso] !== undefined)
+          ? perDaySchedules[iso]
+          : defaultSchedule;
 
-      // Create breakdown array for structured data
-      const breakdownArray = dailyBreakdown
-        .map((km, idx) => ({
-          date: serviceDates[idx],
-          km,
-        }))
-        .filter(item => item.date);
+        // Check if day has any service
+        const hasService = (schedule.morning + schedule.evening + schedule.night) > 0;
 
-      lineItems.push({
-        serviceCode: travelService.code,
-        description: `${travelService.description}`,
-        quantity: totalKm,
-        unitPrice: travelService.rate,
-        total: totalKm * travelService.rate,
-        category: 'travel',
-        dates: datesBreakdown,
-        dailyBreakdown: breakdownArray,
-      });
+        if (hasService) {
+          // use specific override if present, else default
+          const kmForDay = schedule.travelKm ?? travelKmPerDay;
+          if (kmForDay > 0) {
+            breakdowns.push({ date, km: kmForDay });
+            totalKm += kmForDay;
+          }
+        }
+      }
+
+      if (totalKm > 0) {
+        // Build dates column with km breakdown
+        const datesBreakdown = breakdowns
+          .map((item) => {
+            const dateStr = format(item.date, 'dd/MM/yy');
+            return `${dateStr}: ${item.km}km`;
+          })
+          .join(', ');
+
+        lineItems.push({
+          serviceCode: travelService.code,
+          description: `${travelService.description}`,
+          quantity: totalKm,
+          unitPrice: travelService.rate,
+          total: totalKm * travelService.rate,
+          category: 'travel',
+          dates: datesBreakdown,
+          dailyBreakdown: breakdowns,
+        });
+      }
     }
   }
 
