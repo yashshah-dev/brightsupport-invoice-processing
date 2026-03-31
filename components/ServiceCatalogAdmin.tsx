@@ -27,7 +27,12 @@ export default function ServiceCatalogAdmin() {
     return items.filter(i => {
       const matchesCat = filter === 'all' ? true : i.category === filter;
       const q = query.trim().toLowerCase();
-      const matchesQ = q.length === 0 || i.code.toLowerCase().includes(q) || i.description.toLowerCase().includes(q);
+      const matchesQ =
+        q.length === 0 ||
+        i.code.toLowerCase().includes(q) ||
+        i.description.toLowerCase().includes(q) ||
+        i.registrationGroupNumber.toLowerCase().includes(q) ||
+        i.registrationGroupName.toLowerCase().includes(q);
       return matchesCat && matchesQ;
     });
   }, [items, filter, query]);
@@ -73,7 +78,7 @@ export default function ServiceCatalogAdmin() {
             ))}
           </select>
           <input
-            placeholder="Search code/description"
+            placeholder="Search group/code/description"
             value={query}
             onChange={e => setQuery(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
@@ -105,6 +110,8 @@ export default function ServiceCatalogAdmin() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-100 border-b">
+              <th className="text-left p-2">Reg. Group No.</th>
+              <th className="text-left p-2">Reg. Group Name</th>
               <th className="text-left p-2">Category</th>
               <th className="text-left p-2">Code</th>
               <th className="text-left p-2">Description</th>
@@ -116,6 +123,8 @@ export default function ServiceCatalogAdmin() {
           <tbody>
             {filtered.map(item => (
               <tr key={item.id} className="border-b">
+                <td className="p-2 font-mono text-xs">{item.registrationGroupNumber}</td>
+                <td className="p-2">{item.registrationGroupName}</td>
                 <td className="p-2 capitalize">{item.category.replace(/([A-Z])/g, ' $1').toLowerCase()}</td>
                 <td className="p-2 font-mono text-xs">{item.code}</td>
                 <td className="p-2">{item.description}</td>
@@ -135,6 +144,22 @@ export default function ServiceCatalogAdmin() {
         <div className="mt-6 border rounded p-4">
           <h3 className="font-semibold mb-3">Edit Service</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="flex flex-col">
+              <span className="text-xs text-gray-600">Registration Group Number</span>
+              <input
+                value={editing.registrationGroupNumber}
+                onChange={e => setEditing({ ...editing, registrationGroupNumber: e.target.value })}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </label>
+            <label className="flex flex-col">
+              <span className="text-xs text-gray-600">Registration Group Name</span>
+              <input
+                value={editing.registrationGroupName}
+                onChange={e => setEditing({ ...editing, registrationGroupName: e.target.value })}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </label>
             <label className="flex flex-col">
               <span className="text-xs text-gray-600">Category</span>
               <select value={editing.category} onChange={e => setEditing({ ...editing, category: e.target.value as ServiceCategory })} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">

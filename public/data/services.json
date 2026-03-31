@@ -2,6 +2,8 @@
   {
     "id": "weekday-default",
     "category": "weekday",
+    "registrationGroupNumber": "04_104",
+    "registrationGroupName": "Assist Access Community Social and Recreational Activities",
     "code": "04_104_0125_6_1",
     "description": "Access Community Social and Rec Activity - Weekdays Daytime",
     "rate": 67.56,
@@ -10,6 +12,8 @@
   {
     "id": "saturday-default",
     "category": "saturday",
+    "registrationGroupNumber": "04_105",
+    "registrationGroupName": "Assist Access Community Social and Recreational Activities",
     "code": "04_105_0125_6_1",
     "description": "Access Community Social and Rec Activity - Standard Daytime - Saturday",
     "rate": 95.07,
@@ -18,6 +22,8 @@
   {
     "id": "sunday-default",
     "category": "sunday",
+    "registrationGroupNumber": "04_106",
+    "registrationGroupName": "Assist Access Community Social and Recreational Activities",
     "code": "04_106_0125_6_1",
     "description": "Access Community Social and Rec Activity Standard - Sunday Daytime",
     "rate": 122.59,
@@ -26,6 +32,8 @@
   {
     "id": "publicHoliday-default",
     "category": "publicHoliday",
+    "registrationGroupNumber": "04_102",
+    "registrationGroupName": "Assist Access Community Social and Recreational Activities",
     "code": "04_102_0125_6_1",
     "description": "Access Community Social and Rec Activity Standard - Public Holiday - Daytime",
     "rate": 150.10,
@@ -34,6 +42,8 @@
   {
     "id": "travel-default",
     "category": "travel",
+    "registrationGroupNumber": "04_799",
+    "registrationGroupName": "Provider Travel",
     "code": "04_799_0125_6_1",
     "description": "Provider Travel Non Labor Cost",
     "rate": 1.0,

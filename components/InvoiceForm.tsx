@@ -1,13 +1,24 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { ClientInfo, DaySchedule } from '@/types/invoice';
+import { ClientInfo, DaySchedule, DailyServiceAllocation, DayCategory } from '@/types/invoice';
 import { DEFAULT_CLIENT_INFO } from '@/constants/invoice';
+import { loadServices, ServiceItem } from '@/utils/services';
+import { format } from 'date-fns';
+import DayExclusionCalendar from '@/components/DayExclusionCalendar';
+
+type GroupHoursTemplate = {
+  registrationGroupNumber: string;
+  hours: number;
+};
 
 interface InvoiceFormProps {
   onFormChange: (formData: FormData) => void;
+  dayCategories?: DayCategory[];
+  onToggleDay?: (date: Date) => void;
+  manualHolidays?: Array<{ date: Date; name: string }>;
 }
 
 export interface FormData {
@@ -16,6 +27,7 @@ export interface FormData {
   endDate: Date | null;
   defaultSchedule: DaySchedule; // Renamed from hoursPerDay
   perDaySchedules?: Record<string, DaySchedule>; // Renamed from perDayHours
+  perDayServiceAllocations?: Record<string, DailyServiceAllocation[]>;
   travelKmPerDay: number;
   clientInfo: ClientInfo;
 }
@@ -36,6 +48,7 @@ function loadSavedFormData(): Partial<FormData> | null {
       startDate: parsed.startDate ? new Date(parsed.startDate) : null,
       endDate: parsed.endDate ? new Date(parsed.endDate) : null,
       perDaySchedules: parsed.perDaySchedules || {},
+      perDayServiceAllocations: parsed.perDayServiceAllocations || {},
     };
   } catch {
     return null;
@@ -54,37 +67,97 @@ function saveFormData(data: FormData) {
   }
 }
 
-const EMPTY_SCHEDULE: DaySchedule = { morning: 0, evening: 0, night: 0 };
+export default function InvoiceForm({
+  onFormChange,
+  dayCategories = [],
+  onToggleDay,
+  manualHolidays = [],
+}: InvoiceFormProps) {
+  const [serviceOptions, setServiceOptions] = useState<ServiceItem[]>([]);
+  const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
+  const [groupHoursTemplate, setGroupHoursTemplate] = useState<GroupHoursTemplate[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-export default function InvoiceForm({ onFormChange }: InvoiceFormProps) {
-  const [formData, setFormData] = useState<FormData>(() => {
-    const saved = loadSavedFormData();
-    return {
-      invoiceDate: saved?.invoiceDate || new Date(),
-      startDate: saved?.startDate || null,
-      endDate: saved?.endDate || null,
-      defaultSchedule: saved?.defaultSchedule || { morning: 8, evening: 0, night: 0 },
-      perDaySchedules: saved?.perDaySchedules || {},
-      travelKmPerDay: saved?.travelKmPerDay || 27.5,
-      clientInfo: saved?.clientInfo || {
-        name: '',
-        ndisNumber: '',
-        address: '',
-        planManager: DEFAULT_CLIENT_INFO.planManager,
-        planManagerEmail: DEFAULT_CLIENT_INFO.planManagerEmail,
-      },
-    };
-  });
+  const defaultFormData: FormData = {
+    invoiceDate: new Date(),
+    startDate: null,
+    endDate: null,
+    defaultSchedule: { morning: 0, evening: 0, night: 0 },
+    perDaySchedules: {},
+    perDayServiceAllocations: {},
+    travelKmPerDay: 27.5,
+    clientInfo: {
+      name: '',
+      ndisNumber: '',
+      address: '',
+      planManager: DEFAULT_CLIENT_INFO.planManager,
+      planManagerEmail: DEFAULT_CLIENT_INFO.planManagerEmail,
+    },
+  };
+
+  const [formData, setFormData] = useState<FormData>(defaultFormData);
 
   // Auto-save form data whenever it changes
   useEffect(() => {
+    if (!isInitialized) return;
     saveFormData(formData);
-  }, [formData]);
+  }, [formData, isInitialized]);
 
-  // Notify parent of initial form data on mount
+  // Initialize from localStorage after mount to avoid SSR/client hydration mismatch
   useEffect(() => {
-    onFormChange(formData);
+    const saved = loadSavedFormData();
+    if (saved) {
+      const validKeys = new Set(
+        getDatesBetween(saved.startDate || null, saved.endDate || null).map((d) => dateKey(d))
+      );
+
+      const hydrated: FormData = {
+        ...defaultFormData,
+        ...saved,
+        defaultSchedule: saved.defaultSchedule || defaultFormData.defaultSchedule,
+        perDaySchedules: normalizeDateKeyedMap(saved.perDaySchedules, validKeys),
+        perDayServiceAllocations: normalizeDateKeyedMap(saved.perDayServiceAllocations, validKeys),
+        clientInfo: {
+          ...defaultFormData.clientInfo,
+          ...(saved.clientInfo || {}),
+        },
+      };
+      setFormData(hydrated);
+      onFormChange(hydrated);
+    } else {
+      onFormChange(defaultFormData);
+    }
+    setIsInitialized(true);
   }, []); // Only run once on mount
+
+  useEffect(() => {
+    loadServices()
+      .then((items) => {
+        setServiceOptions(items.filter((item) => item.active && item.category !== 'travel'));
+      })
+      .catch((error) => {
+        console.warn('Failed to load service options for daily allocation:', error);
+      });
+  }, []);
+
+  const registrationGroups = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const service of serviceOptions) {
+      if (!service.registrationGroupNumber) continue;
+      if (!map.has(service.registrationGroupNumber)) {
+        map.set(service.registrationGroupNumber, service.registrationGroupName || service.registrationGroupNumber);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([number, name]) => ({ number, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [serviceOptions]);
+
+  useEffect(() => {
+    if (groupHoursTemplate.length === 0 && registrationGroups.length > 0) {
+      setGroupHoursTemplate([{ registrationGroupNumber: registrationGroups[0].number, hours: 8 }]);
+    }
+  }, [registrationGroups, groupHoursTemplate.length]);
 
   const updateFormData = (updates: Partial<FormData>) => {
     const newFormData = { ...formData, ...updates };
@@ -105,7 +178,39 @@ export default function InvoiceForm({ onFormChange }: InvoiceFormProps) {
     return dates;
   };
 
-  const [customizeHours, setCustomizeHours] = useState<boolean>(false);
+  const dateKey = (date: Date) => format(date, 'yyyy-MM-dd');
+
+  const shiftIsoDate = (iso: string, days: number) => {
+    const d = new Date(`${iso}T00:00:00`);
+    d.setDate(d.getDate() + days);
+    return dateKey(d);
+  };
+
+  const normalizeDateKeyedMap = <T,>(
+    input: Record<string, T> | undefined,
+    validKeys: Set<string>
+  ): Record<string, T> => {
+    if (!input) return {};
+    const normalized: Record<string, T> = {};
+
+    for (const [key, value] of Object.entries(input)) {
+      if (validKeys.has(key)) {
+        normalized[key] = value;
+        continue;
+      }
+
+      const plusOne = shiftIsoDate(key, 1);
+      const minusOne = shiftIsoDate(key, -1);
+
+      if (validKeys.has(plusOne)) {
+        normalized[plusOne] = value;
+      } else if (validKeys.has(minusOne)) {
+        normalized[minusOne] = value;
+      }
+    }
+
+    return normalized;
+  };
 
   const updateClientInfo = (field: keyof ClientInfo, value: string) => {
     const newClientInfo = { ...formData.clientInfo, [field]: value };
@@ -118,7 +223,9 @@ export default function InvoiceForm({ onFormChange }: InvoiceFormProps) {
         invoiceDate: new Date(),
         startDate: null,
         endDate: null,
-        defaultSchedule: { morning: 8, evening: 0, night: 0 },
+        defaultSchedule: { morning: 0, evening: 0, night: 0 },
+        perDaySchedules: {},
+        perDayServiceAllocations: {},
         travelKmPerDay: 27.5,
         clientInfo: {
           name: '',
@@ -134,10 +241,209 @@ export default function InvoiceForm({ onFormChange }: InvoiceFormProps) {
     }
   };
 
-  const updateDefaultSchedule = (field: keyof DaySchedule, value: number) => {
-    updateFormData({
-      defaultSchedule: { ...formData.defaultSchedule, [field]: value }
+  const updateDayServiceAllocations = (isoDate: string, allocations: DailyServiceAllocation[]) => {
+    const next = { ...(formData.perDayServiceAllocations || {}) };
+    const validAllocations = allocations.filter((item) => item.serviceId && item.hours > 0);
+    if (validAllocations.length === 0) {
+      delete next[isoDate];
+    } else {
+      next[isoDate] = validAllocations;
+    }
+    updateFormData({ perDayServiceAllocations: next });
+  };
+
+  const addServiceAllocationRow = (isoDate: string) => {
+    const current = formData.perDayServiceAllocations?.[isoDate] || [];
+    const existingType = dayCategories.find((item) => dateKey(item.date) === isoDate)?.type;
+    const fallbackDate = new Date(`${isoDate}T00:00:00`);
+    const dayType = existingType || inferDayTypeFromDate(fallbackDate);
+    const preferredGroup = groupHoursTemplate[0]?.registrationGroupNumber || '';
+    const preferred =
+      findGroupServiceForType(preferredGroup, dayType) ||
+      findDefaultServiceForType(dayType);
+    const defaultServiceId = preferred?.id || serviceOptions[0]?.id || '';
+    updateDayServiceAllocations(isoDate, [...current, { serviceId: defaultServiceId, hours: 1 }]);
+  };
+
+  const updateServiceAllocationRow = (
+    isoDate: string,
+    index: number,
+    field: keyof DailyServiceAllocation,
+    value: string | number
+  ) => {
+    const current = [...(formData.perDayServiceAllocations?.[isoDate] || [])];
+    if (!current[index]) return;
+    current[index] = {
+      ...current[index],
+      [field]: field === 'hours' ? Number(value) : value,
+    };
+    updateDayServiceAllocations(isoDate, current);
+  };
+
+  const removeServiceAllocationRow = (isoDate: string, index: number) => {
+    const current = [...(formData.perDayServiceAllocations?.[isoDate] || [])];
+    current.splice(index, 1);
+    updateDayServiceAllocations(isoDate, current);
+  };
+
+  const toggleDayExpanded = (isoDate: string) => {
+    setExpandedDays((prev) => ({ ...prev, [isoDate]: !prev[isoDate] }));
+  };
+
+  const categoryByIsoDate = dayCategories.reduce((acc, item) => {
+    acc[dateKey(item.date)] = item.type;
+    return acc;
+  }, {} as Record<string, DayCategory['type']>);
+
+  const inferDayTypeFromDate = (date: Date): DayCategory['type'] => {
+    const day = date.getDay();
+    if (day === 0) return 'sunday';
+    if (day === 6) return 'saturday';
+    return 'weekday';
+  };
+
+  const getDayType = (date: Date): DayCategory['type'] => {
+    const iso = dateKey(date);
+    const mapped = categoryByIsoDate[iso];
+    // Trust mapped category only for public holidays; weekday/weekend should always
+    // come from the actual calendar date to avoid stale/misaligned saved mappings.
+    if (mapped === 'publicHoliday') return 'publicHoliday';
+    return inferDayTypeFromDate(date);
+  };
+
+  const findDefaultServiceForType = (type: DayCategory['type']) => {
+    const byId = serviceOptions.find((service) => service.id === `${type}-default`);
+    if (byId) return byId;
+    return serviceOptions.find((service) => service.category === type) || null;
+  };
+
+  const findGroupServiceForType = (registrationGroupNumber: string, type: DayCategory['type']) => {
+    if (!registrationGroupNumber) return null;
+    return (
+      serviceOptions.find(
+        (service) =>
+          service.registrationGroupNumber === registrationGroupNumber &&
+          service.category === type
+      ) || null
+    );
+  };
+
+  const addGroupTemplateRow = () => {
+    if (registrationGroups.length === 0) return;
+    setGroupHoursTemplate((prev) => [
+      ...prev,
+      { registrationGroupNumber: registrationGroups[0].number, hours: 1 },
+    ]);
+  };
+
+  const updateGroupTemplateRow = (
+    index: number,
+    field: keyof GroupHoursTemplate,
+    value: string | number
+  ) => {
+    setGroupHoursTemplate((prev) => {
+      const next = [...prev];
+      if (!next[index]) return prev;
+      next[index] = {
+        ...next[index],
+        [field]: field === 'hours' ? Number(value) : value,
+      };
+      return next;
     });
+  };
+
+  const removeGroupTemplateRow = (index: number) => {
+    setGroupHoursTemplate((prev) => {
+      const next = [...prev];
+      next.splice(index, 1);
+      return next;
+    });
+  };
+
+  const autoPopulateByDayType = () => {
+    if (!formData.startDate || !formData.endDate) return;
+    const validTemplateRows = groupHoursTemplate.filter(
+      (row) => row.registrationGroupNumber && row.hours > 0
+    );
+    if (validTemplateRows.length === 0) {
+      alert('Add at least one registration group with hours greater than 0.');
+      return;
+    }
+
+    const next: Record<string, DailyServiceAllocation[]> = {};
+    const dates = getDatesBetween(formData.startDate, formData.endDate).filter((date) => {
+      const key = dateKey(date);
+      const day = dayCategories.find((item) => dateKey(item.date) === key);
+      return !day || !day.isExcluded;
+    });
+
+    const missingTypes: Array<{ date: string; type: string; group: string }> = [];
+
+    for (const date of dates) {
+      const iso = dateKey(date);
+      const dayType = getDayType(date);
+
+      const allocationsForDay: DailyServiceAllocation[] = [];
+      for (const row of validTemplateRows) {
+        const service = findGroupServiceForType(row.registrationGroupNumber, dayType);
+        if (!service) {
+          missingTypes.push({
+            date: format(date, 'dd/MM/yyyy'),
+            type: dayType,
+            group: row.registrationGroupNumber,
+          });
+          continue;
+        }
+        allocationsForDay.push({ serviceId: service.id, hours: row.hours });
+      }
+
+      if (allocationsForDay.length > 0) {
+        next[iso] = allocationsForDay;
+      }
+    }
+    updateFormData({ perDayServiceAllocations: next });
+
+    if (missingTypes.length > 0) {
+      alert(
+        `Some group/type mappings were missing and skipped:\n${missingTypes
+          .slice(0, 5)
+          .map((x) => `${x.date} (${x.type}) - Group ${x.group}`)
+          .join('\n')}`
+      );
+    }
+  };
+
+  const getAllocationValidationErrors = (date: Date, allocations: DailyServiceAllocation[]) => {
+    const dayType = getDayType(date);
+    return allocations
+      .map((row) => {
+        const service = serviceOptions.find((item) => item.id === row.serviceId);
+        if (!service) return null;
+        if (service.category === dayType) return null;
+        return `Invalid mapping: ${dayType} day is using ${service.category} service code (${service.code})`;
+      })
+      .filter((message): message is string => !!message);
+  };
+
+  const serviceLabelById: Record<string, string> = serviceOptions.reduce((acc, option) => {
+    acc[option.id] = `${option.code} - ${option.description}`;
+    return acc;
+  }, {} as Record<string, string>);
+
+  const updateDayTravelKm = (isoDate: string, value?: number) => {
+    const next = { ...(formData.perDaySchedules || {}) };
+    const current = next[isoDate] || { morning: 0, evening: 0, night: 0 };
+    if (value === undefined) {
+      delete current.travelKm;
+    } else {
+      current.travelKm = value;
+    }
+    if (!current.travelKm && current.morning === 0 && current.evening === 0 && current.night === 0) {
+      delete next[isoDate];
+    } else {
+      next[isoDate] = current;
+    }
+    updateFormData({ perDaySchedules: next });
   };
 
   return (
@@ -267,143 +573,240 @@ export default function InvoiceForm({ onFormChange }: InvoiceFormProps) {
         </div>
       </div>
 
+      {/* Calendar & Day Exclusion */}
+      {dayCategories.length > 0 && onToggleDay && (
+        <DayExclusionCalendar
+          dayCategories={dayCategories}
+          onToggleDay={onToggleDay}
+          manualHolidays={manualHolidays}
+        />
+      )}
+
       {/* Service Configuration */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-700">Service Configuration (Default Daily Schedule)</h3>
+        <h3 className="text-lg font-semibold text-gray-700">Service Allocation (By Service Code)</h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Weekday Daytime (6am-8pm)</label>
-            <input type="number" min="0" max="24" step="0.5"
-              value={formData.defaultSchedule.morning}
-              onChange={e => updateDefaultSchedule('morning', parseFloat(e.target.value) || 0)}
-              className="w-full px-3 py-2 border rounded"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Weekday Evening (8pm-12am)</label>
-            <input type="number" min="0" max="24" step="0.5"
-              value={formData.defaultSchedule.evening}
-              onChange={e => updateDefaultSchedule('evening', parseFloat(e.target.value) || 0)}
-              className="w-full px-3 py-2 border rounded"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Night-Time Sleepover (Units)</label>
-            <input type="number" min="0" max="24" step="1"
-              value={formData.defaultSchedule.night}
-              onChange={e => updateDefaultSchedule('night', parseFloat(e.target.value) || 0)}
-              className="w-full px-3 py-2 border rounded"
-            />
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-center gap-2 mt-2">
-            <input id="customizeHours" type="checkbox" checked={customizeHours} onChange={e => setCustomizeHours(e.target.checked)} />
-            <label htmlFor="customizeHours" className="text-sm text-gray-700">Customize schedule for specific days</label>
-          </div>
-
-          {customizeHours && formData.startDate && formData.endDate && (
-            <div className="mt-3 border p-3 rounded bg-gray-50">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs text-gray-600">Adjust hours per specific date below.</p>
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => {
-                    updateFormData({ perDaySchedules: {} });
-                  }} className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">Reset All to Default</button>
-                  <button type="button" onClick={() => {
-                    const dates = getDatesBetween(formData.startDate, formData.endDate);
-                    const next = { ...(formData.perDaySchedules || {}) };
-                    dates.forEach(d => {
-                      const iso = d.toISOString().slice(0, 10);
-                      const day = d.getDay();
-                      if (day === 0 || day === 6) {
-                        next[iso] = {
-                          morning: Math.max(0, formData.defaultSchedule.morning / 2),
-                          evening: Math.max(0, formData.defaultSchedule.evening / 2),
-                          night: Math.max(0, formData.defaultSchedule.night / 2),
-                        };
-                      }
-                    });
-                    updateFormData({ perDaySchedules: next });
-                  }} className="px-2 py-1 text-xs bg-purple-500 text-white rounded hover:bg-purple-600">Half on Weekends</button>
+        {formData.startDate && formData.endDate && (
+          <div className="mt-3 border rounded bg-gray-50 p-4 space-y-4">
+            <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 space-y-3">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-indigo-900">Apply Group Split to All Dates</p>
+                  <p className="text-xs text-indigo-700">Select multiple registration groups and divide hours. System maps each group to the correct day-type service automatically.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={addGroupTemplateRow}
+                    className="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                    disabled={registrationGroups.length === 0}
+                  >
+                    + Add Group
+                  </button>
+                  <button
+                    type="button"
+                    onClick={autoPopulateByDayType}
+                    className="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded hover:bg-emerald-700"
+                    disabled={serviceOptions.length === 0 || groupHoursTemplate.length === 0}
+                  >
+                    Apply to All Dates
+                  </button>
                 </div>
               </div>
-              <div className="max-h-60 overflow-auto mb-3">
-                {getDatesBetween(formData.startDate, formData.endDate).map((d) => {
-                  const iso = d.toISOString().slice(0, 10);
-                  const sched = formData.perDaySchedules?.[iso] ?? formData.defaultSchedule;
-                  const total = sched.morning + sched.evening + sched.night;
-                  const isZero = total === 0;
-                  const day = d.getDay();
 
-                  const updateDay = (field: keyof DaySchedule, val: number) => {
-                    const next = { ...(formData.perDaySchedules || {}) };
-                    const current = next[iso] || { ...formData.defaultSchedule };
-                    current[field] = val;
-                    next[iso] = current;
-                    updateFormData({ perDaySchedules: next });
-                  };
+              <div className="space-y-2">
+                {groupHoursTemplate.map((row, idx) => (
+                  <div key={`group-template-${idx}`} className="flex items-center gap-2 flex-wrap">
+                    <select
+                      value={row.registrationGroupNumber}
+                      onChange={(e) => updateGroupTemplateRow(idx, 'registrationGroupNumber', e.target.value)}
+                      className="min-w-[320px] px-2 py-1 text-xs border rounded bg-white"
+                    >
+                      {registrationGroups.map((group) => (
+                        <option key={group.number} value={group.number}>
+                          {group.name} ({group.number})
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={row.hours}
+                      onChange={(e) => updateGroupTemplateRow(idx, 'hours', parseFloat(e.target.value) || 0)}
+                      className="w-20 px-2 py-1 text-xs border rounded bg-white"
+                    />
+                    <span className="text-xs text-gray-700">hours/day</span>
+                    <button
+                      type="button"
+                      onClick={() => removeGroupTemplateRow(idx)}
+                      className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-                  const resetDay = () => {
-                    const next = { ...(formData.perDaySchedules || {}) };
-                    delete next[iso];
-                    updateFormData({ perDaySchedules: next });
-                  };
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-600">Day-by-day overrides</p>
+              <button
+                type="button"
+                onClick={() => updateFormData({ perDaySchedules: {}, perDayServiceAllocations: {} })}
+                className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+              >
+                Reset All Days
+              </button>
+            </div>
 
-                  return (
-                    <div key={iso} className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-2 p-2 rounded border ${isZero ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-gray-100'}`}>
-                      <div className="flex items-center gap-2 w-32">
-                        <div className="text-sm font-medium">{d.toLocaleDateString()}</div>
-                        <div className="text-xs text-gray-500">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day]}</div>
+            <div className="max-h-80 overflow-auto space-y-2">
+              {getDatesBetween(formData.startDate, formData.endDate)
+                .filter((d) => {
+                  const key = dateKey(d);
+                  const match = dayCategories.find((day) => dateKey(day.date) === key);
+                  return !match || !match.isExcluded;
+                })
+                .map((d) => {
+                const iso = dateKey(d);
+                const travelOverride = formData.perDaySchedules?.[iso]?.travelKm;
+                const allocations = formData.perDayServiceAllocations?.[iso] || [];
+                const allocatedHours = allocations.reduce((sum, row) => sum + (row.hours || 0), 0);
+                const day = d.getDay();
+                const expanded = !!expandedDays[iso];
+
+                const resetDay = () => {
+                  const next = { ...(formData.perDaySchedules || {}) };
+                  delete next[iso];
+                  const nextAlloc = { ...(formData.perDayServiceAllocations || {}) };
+                  delete nextAlloc[iso];
+                  updateFormData({ perDaySchedules: next, perDayServiceAllocations: nextAlloc });
+                };
+
+                const serviceNames = allocations
+                  .map((row) => serviceLabelById[row.serviceId])
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .join(' | ');
+
+                return (
+                  <div key={iso} className="rounded border border-gray-200 bg-white">
+                    <div className="flex items-center justify-between px-3 py-2">
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{d.toLocaleDateString()} ({['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day]})</p>
+                        <p className="text-xs text-gray-500">
+                          {allocations.length > 0
+                            ? `${allocations.length} service(s), ${allocatedHours}h${serviceNames ? ` - ${serviceNames}` : ''}`
+                            : 'No services allocated'}
+                        </p>
                       </div>
-                      <div className="flex items-center gap-2 flex-1">
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-gray-500">Daytime</span>
-                          <input type="number" step="0.5" value={sched.morning} onChange={e => updateDay('morning', parseFloat(e.target.value) || 0)} className="w-16 px-1 py-0.5 text-sm border rounded" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-gray-500">Eve</span>
-                          <input type="number" step="0.5" value={sched.evening} onChange={e => updateDay('evening', parseFloat(e.target.value) || 0)} className="w-16 px-1 py-0.5 text-sm border rounded" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-gray-500">Sleepover</span>
-                          <input type="number" step="1" value={sched.night} onChange={e => updateDay('night', parseFloat(e.target.value) || 0)} className="w-16 px-1 py-0.5 text-sm border rounded" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-gray-500">Travel KM</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleDayExpanded(iso)}
+                          className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                        >
+                          {expanded ? 'Collapse' : 'Edit'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={resetDay}
+                          className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+
+                    {expanded && (
+                      <div className="px-3 pb-3 space-y-3 border-t border-gray-100">
+                        <div className="pt-2">
+                          <label className="block text-[11px] text-gray-500 mb-1">Travel KM Override (optional)</label>
                           <input
                             type="number"
                             step="1"
                             min="0"
                             placeholder={formData.travelKmPerDay.toString()}
-                            value={sched.travelKm ?? ''}
-                            onChange={e => {
+                            value={travelOverride ?? ''}
+                            onChange={(e) => {
                               const val = e.target.value === '' ? undefined : parseFloat(e.target.value);
-                              // @ts-ignore - Update local helper to accept travelKm
-                              const next = { ...(formData.perDaySchedules || {}) };
-                              const current = next[iso] || { ...formData.defaultSchedule };
-                              if (val === undefined) {
-                                delete current.travelKm;
-                              } else {
-                                current.travelKm = val;
-                              }
-                              next[iso] = current;
-                              updateFormData({ perDaySchedules: next });
+                              updateDayTravelKm(iso, val);
                             }}
-                            className="w-16 px-1 py-0.5 text-sm border rounded"
+                            className="w-24 px-2 py-1 text-xs border rounded"
                           />
                         </div>
-                        <button type="button" onClick={resetDay} className="ml-2 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200" title="Reset to default">↺</button>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-gray-700">Service Rows</span>
+                            <button
+                              type="button"
+                              onClick={() => addServiceAllocationRow(iso)}
+                              className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                              disabled={serviceOptions.length === 0}
+                            >
+                              + Add Service
+                            </button>
+                          </div>
+
+                          {allocations.length === 0 ? (
+                            <p className="text-[11px] text-gray-600">No rows yet. Add a service row for this day.</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {allocations.map((row, idx) => (
+                                <div key={`${iso}-allocation-${idx}`} className="flex items-center gap-2 flex-wrap">
+                                  <select
+                                    value={row.serviceId}
+                                    onChange={(e) => updateServiceAllocationRow(iso, idx, 'serviceId', e.target.value)}
+                                    className="min-w-[220px] px-2 py-1 text-xs border rounded bg-white"
+                                  >
+                                    {serviceOptions.map((option) => (
+                                      <option key={option.id} value={option.id}>
+                                        {option.code} - {option.description}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <input
+                                    type="number"
+                                    step="0.5"
+                                    min="0"
+                                    value={row.hours}
+                                    onChange={(e) => updateServiceAllocationRow(iso, idx, 'hours', parseFloat(e.target.value) || 0)}
+                                    className="w-20 px-2 py-1 text-xs border rounded"
+                                  />
+                                  <span className="text-xs text-gray-600">hours</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeServiceAllocationRow(iso, idx)}
+                                    className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              ))}
+                              {getAllocationValidationErrors(d, allocations).length > 0 && (
+                                <div className="space-y-1">
+                                  {getAllocationValidationErrors(d, allocations).map((error, idx) => (
+                                    <p key={`${iso}-error-${idx}`} className="text-[11px] text-red-700 bg-red-50 border border-red-100 rounded px-2 py-1">
+                                      {error}
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
+                              <p className="text-[11px] text-gray-700">
+                                Total for day: <span className="font-semibold">{allocatedHours}h</span>
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -41,6 +41,11 @@ export interface DaySchedule {
   travelKm?: number;
 }
 
+export interface DailyServiceAllocation {
+  serviceId: string;
+  hours: number;
+}
+
 export interface InvoiceData {
   invoiceNumber: string;
   invoiceDate: Date;
@@ -50,6 +55,8 @@ export interface InvoiceData {
   defaultSchedule: DaySchedule; // Replaces hoursPerDay
   // Map of ISO date string -> DaySchedule for per-day overrides
   perDaySchedules?: Record<string, DaySchedule>;
+  // Map of ISO date string -> multiple service allocations for that day
+  perDayServiceAllocations?: Record<string, DailyServiceAllocation[]>;
   travelKmPerDay: number;
   excludedDates: Date[];
   dayCategories: DayCategory[];

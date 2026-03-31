@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import InvoiceForm, { FormData } from '@/components/InvoiceForm';
-import DayExclusionCalendar from '@/components/DayExclusionCalendar';
 import CostBreakdown from '@/components/CostBreakdown';
 import InvoicePreview from '@/components/InvoicePreview';
 import ManualHolidaySelector from '@/components/ManualHolidaySelector';
@@ -64,7 +63,8 @@ export default function InvoiceGenerator() {
         formData.defaultSchedule,
         formData.travelKmPerDay,
         dayCategories,
-        formData.perDaySchedules
+        formData.perDaySchedules,
+        formData.perDayServiceAllocations
       ).then(invoice => setInvoiceData(invoice));
     } else {
       setInvoiceData(null);
@@ -177,7 +177,12 @@ export default function InvoiceGenerator() {
         {activeTab === 'form' ? (
           <div className="space-y-6">
             {/* Form */}
-            <InvoiceForm onFormChange={handleFormChange} />
+            <InvoiceForm
+              onFormChange={handleFormChange}
+              dayCategories={dayCategories}
+              onToggleDay={handleToggleDay}
+              manualHolidays={manualHolidays}
+            />
 
             {/* Manual Holiday Selector */}
             <ManualHolidaySelector
@@ -185,15 +190,6 @@ export default function InvoiceGenerator() {
               onRemoveHoliday={handleRemoveHoliday}
               manualHolidays={manualHolidays}
             />
-
-            {/* Calendar */}
-            {dayCategories.length > 0 && (
-              <DayExclusionCalendar
-                dayCategories={dayCategories}
-                onToggleDay={handleToggleDay}
-                manualHolidays={manualHolidays}
-              />
-            )}
 
             {/* Cost Breakdown */}
             {invoiceData && (
