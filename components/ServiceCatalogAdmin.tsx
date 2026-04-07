@@ -6,7 +6,7 @@ import { ServiceItem, loadServices, saveServices, createEmptyService, exportServ
 const categories: { value: ServiceCategory; label: string }[] = [
   { value: 'weekday', label: 'Standard - Weekday Daytime' },
   { value: 'weekday_evening', label: 'Standard - Weekday Evening' },
-  { value: 'weekday_night', label: 'Night-Time Sleepover' },
+  { value: 'weekday_night', label: 'Standard - Weekday Night' },
   { value: 'saturday', label: 'Standard - Saturday' },
   { value: 'sunday', label: 'Standard - Sunday' },
   { value: 'publicHoliday', label: 'Standard - Public Holiday' },

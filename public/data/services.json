@@ -10,6 +10,16 @@
     "active": true
   },
   {
+    "id": "weekday_night-default",
+    "category": "weekday_night",
+    "registrationGroupNumber": "04_104",
+    "registrationGroupName": "Assist Access Community Social and Recreational Activities",
+    "code": "04_104_0125_6_1",
+    "description": "Access Community Social and Rec Activity - Weekday Night",
+    "rate": 67.56,
+    "active": true
+  },
+  {
     "id": "saturday-default",
     "category": "saturday",
     "registrationGroupNumber": "04_105",
