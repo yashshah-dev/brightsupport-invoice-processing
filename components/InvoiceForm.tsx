@@ -29,6 +29,8 @@ export interface FormData {
   perDaySchedules?: Record<string, DaySchedule>; // Renamed from perDayHours
   perDayServiceAllocations?: Record<string, DailyServiceAllocation[]>;
   travelKmPerDay: number;
+  selectedTravelServiceId?: string;
+  travelEntries?: Array<{ serviceId: string; km: number }>;
   clientInfo: ClientInfo;
 }
 
@@ -74,6 +76,7 @@ export default function InvoiceForm({
   manualHolidays = [],
 }: InvoiceFormProps) {
   const [serviceOptions, setServiceOptions] = useState<ServiceItem[]>([]);
+  const [travelOptions, setTravelOptions] = useState<ServiceItem[]>([]);
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
   const [groupHoursTemplate, setGroupHoursTemplate] = useState<GroupHoursTemplate[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -86,6 +89,8 @@ export default function InvoiceForm({
     perDaySchedules: {},
     perDayServiceAllocations: {},
     travelKmPerDay: 27.5,
+    selectedTravelServiceId: '',
+    travelEntries: [],
     clientInfo: {
       name: '',
       ndisNumber: '',
@@ -117,6 +122,7 @@ export default function InvoiceForm({
         defaultSchedule: saved.defaultSchedule || defaultFormData.defaultSchedule,
         perDaySchedules: normalizeDateKeyedMap(saved.perDaySchedules, validKeys),
         perDayServiceAllocations: normalizeDateKeyedMap(saved.perDayServiceAllocations, validKeys),
+        travelEntries: saved.travelEntries || [],
         clientInfo: {
           ...defaultFormData.clientInfo,
           ...(saved.clientInfo || {}),
@@ -133,7 +139,9 @@ export default function InvoiceForm({
   useEffect(() => {
     loadServices()
       .then((items) => {
-        setServiceOptions(items.filter((item) => item.active && item.category !== 'travel'));
+        const activeItems = items.filter((item) => item.active);
+        setServiceOptions(activeItems.filter((item) => item.category !== 'travel'));
+        setTravelOptions(activeItems.filter((item) => item.category === 'travel'));
       })
       .catch((error) => {
         console.warn('Failed to load service options for daily allocation:', error);
@@ -227,6 +235,8 @@ export default function InvoiceForm({
         perDaySchedules: {},
         perDayServiceAllocations: {},
         travelKmPerDay: 27.5,
+        selectedTravelServiceId: '',
+        travelEntries: [],
         clientInfo: {
           name: '',
           ndisNumber: '',
@@ -444,6 +454,30 @@ export default function InvoiceForm({
       next[isoDate] = current;
     }
     updateFormData({ perDaySchedules: next });
+  };
+
+  const addTravelEntryRow = () => {
+    const defaultServiceId = travelOptions[0]?.id || '';
+    const current = formData.travelEntries || [];
+    updateFormData({
+      travelEntries: [...current, { serviceId: defaultServiceId, km: 0 }],
+    });
+  };
+
+  const updateTravelEntryRow = (index: number, field: 'serviceId' | 'km', value: string | number) => {
+    const current = [...(formData.travelEntries || [])];
+    if (!current[index]) return;
+    current[index] = {
+      ...current[index],
+      [field]: field === 'km' ? Number(value) : value,
+    };
+    updateFormData({ travelEntries: current });
+  };
+
+  const removeTravelEntryRow = (index: number) => {
+    const current = [...(formData.travelEntries || [])];
+    current.splice(index, 1);
+    updateFormData({ travelEntries: current });
   };
 
   return (
@@ -824,6 +858,65 @@ export default function InvoiceForm({
             }}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
+          <p className="text-xs text-gray-500 mt-1">Used only when no invoice-level travel entries are added below.</p>
+        </div>
+
+        <div className="border rounded-lg p-3 bg-gray-50">
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Travel Entries (Invoice-Level)
+            </label>
+            <button
+              type="button"
+              onClick={addTravelEntryRow}
+              className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+              disabled={travelOptions.length === 0}
+            >
+              + Add Travel Code
+            </button>
+          </div>
+
+          <p className="text-xs text-gray-500 mb-2">Add one or more travel codes and enter KM for each. These entries override auto travel-per-day calculation.</p>
+
+          {(formData.travelEntries || []).length === 0 ? (
+            <p className="text-xs text-gray-600">No invoice-level travel entries added.</p>
+          ) : (
+            <div className="space-y-2">
+              {(formData.travelEntries || []).map((entry, idx) => (
+                <div key={`travel-entry-${idx}`} className="flex items-center gap-2 flex-wrap">
+                  <select
+                    value={entry.serviceId}
+                    onChange={(e) => updateTravelEntryRow(idx, 'serviceId', e.target.value)}
+                    className="min-w-[260px] px-2 py-1 text-xs border rounded bg-white"
+                  >
+                    {travelOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.code} - {option.description}
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={entry.km}
+                    onChange={(e) => updateTravelEntryRow(idx, 'km', parseFloat(e.target.value) || 0)}
+                    className="w-24 px-2 py-1 text-xs border rounded bg-white"
+                  />
+                  <span className="text-xs text-gray-600">km</span>
+
+                  <button
+                    type="button"
+                    onClick={() => removeTravelEntryRow(idx)}
+                    className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

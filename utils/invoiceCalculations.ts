@@ -20,7 +20,9 @@ export async function calculateLineItems(
   defaultSchedule: DaySchedule,
   travelKmPerDay: number,
   perDaySchedules?: Record<string, DaySchedule>,
-  perDayServiceAllocations?: Record<string, DailyServiceAllocation[]>
+  perDayServiceAllocations?: Record<string, DailyServiceAllocation[]>,
+  selectedTravelServiceId?: string,
+  travelEntries?: Array<{ serviceId: string; km: number }>
 ): Promise<InvoiceLineItem[]> {
   const lineItems: InvoiceLineItem[] = [];
 
@@ -91,6 +93,34 @@ export async function calculateLineItems(
     });
   }
 
+  // Invoice-level travel entries (manual): one line per selected travel code/km row.
+  const validTravelEntries = (travelEntries || [])
+    .filter((entry) => entry.km > 0)
+    .map((entry) => ({
+      ...entry,
+      service: serviceById.get(entry.serviceId),
+    }))
+    .filter(
+      (entry): entry is { serviceId: string; km: number; service: ServiceItem } =>
+        !!entry.service && entry.service.category === 'travel' && entry.service.active
+    );
+
+  if (validTravelEntries.length > 0) {
+    for (const entry of validTravelEntries) {
+      lineItems.push({
+        serviceCode: entry.service.code,
+        description: entry.service.description,
+        quantity: entry.km,
+        unitPrice: entry.service.rate,
+        total: entry.km * entry.service.rate,
+        category: 'travel',
+        dates: 'Invoice-level travel KM',
+      });
+    }
+
+    return lineItems;
+  }
+
   // Calculate travel costs with daily breakdown
   const totalDays = serviceDates.filter(d => {
     const iso = dateKey(d.date);
@@ -99,7 +129,13 @@ export async function calculateLineItems(
   }).length;
 
   if (totalDays > 0 && travelKmPerDay > 0) {
-    const travelService = getServiceForCategory(categoryMap, 'travel');
+    const selectedTravelService = selectedTravelServiceId
+      ? serviceById.get(selectedTravelServiceId)
+      : null;
+    const travelService =
+      selectedTravelService && selectedTravelService.category === 'travel' && selectedTravelService.active
+        ? selectedTravelService
+        : getServiceForCategory(categoryMap, 'travel');
     if (travelService) {
       // Calculate totalKm and build dailyBreakdown deterministically
       const breakdowns: { date: Date; km: number }[] = [];
@@ -180,14 +216,18 @@ export async function buildInvoiceData(
   travelKmPerDay: number,
   dayCategories: DayCategory[],
   perDaySchedules?: Record<string, DaySchedule>, // Renamed from perDayHours
-  perDayServiceAllocations?: Record<string, DailyServiceAllocation[]>
+  perDayServiceAllocations?: Record<string, DailyServiceAllocation[]>,
+  selectedTravelServiceId?: string,
+  travelEntries?: Array<{ serviceId: string; km: number }>
 ): Promise<InvoiceData> {
   const lineItems = await calculateLineItems(
     dayCategories,
     defaultSchedule,
     travelKmPerDay,
     perDaySchedules,
-    perDayServiceAllocations
+    perDayServiceAllocations,
+    selectedTravelServiceId,
+    travelEntries
   );
   const { subtotal, gst, total } = calculateInvoiceTotals(lineItems);
   const excludedDates = dayCategories.filter(d => d.isExcluded).map(d => d.date);

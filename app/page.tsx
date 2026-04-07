@@ -64,7 +64,9 @@ export default function InvoiceGenerator() {
         formData.travelKmPerDay,
         dayCategories,
         formData.perDaySchedules,
-        formData.perDayServiceAllocations
+        formData.perDayServiceAllocations,
+        formData.selectedTravelServiceId,
+        formData.travelEntries
       ).then(invoice => setInvoiceData(invoice));
     } else {
       setInvoiceData(null);
