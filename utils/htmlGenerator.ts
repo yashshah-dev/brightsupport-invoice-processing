@@ -37,7 +37,7 @@ export async function generateHTML(invoiceData: InvoiceData): Promise<void> {
     // Load logo image as base64
     let logoDataUrl: string | undefined;
     try {
-        const logoUrl = asset('/logo/header-logo.png');
+        const logoUrl = asset('/logo/logo-brightsupport.jpeg');
         const absoluteLogoUrl = typeof window !== 'undefined' ? `${window.location.origin}${logoUrl}` : logoUrl;
         const response = await fetch(absoluteLogoUrl);
         if (response.ok) {
@@ -60,130 +60,228 @@ export async function generateHTML(invoiceData: InvoiceData): Promise<void> {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice ${invoiceData.invoiceNumber}</title>
     <style>
+        * { box-sizing: border-box; }
+        
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
             margin: 0;
             padding: 20px;
             color: #333;
-            line-height: 1.4;
+            line-height: 1.5;
+            background: #f5f5f5;
         }
+        
         .container {
             max-width: 210mm;
             margin: 0 auto;
             background: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
+        
+        /* ======== HEADER SECTION ======== */
         .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 15px;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #1e40af;
         }
-        .logo {
-            flex: 1;
-            text-align: center;
-            padding: 0 20px;
-        }
-        .logo img {
-            max-width: 150px;
-            height: auto;
-        }
+        
         .company-info {
-            flex: 1;
-            font-size: 12px;
+            font-size: 11px;
+            color: #3c3c3c;
         }
+        
         .company-name {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: bold;
             color: #1e40af;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
         }
-        .invoice-info {
-            flex: 1;
-            text-align: right;
-            font-size: 12px;
+        
+        .company-info div {
+            margin: 3px 0;
         }
+        
+        .logo {
+            text-align: center;
+            align-self: start;
+        }
+        
+        .logo img {
+            max-width: 120px;
+            height: auto;
+        }
+        
+        .invoice-box {
+            border: 2px solid #1e40af;
+            background: white;
+        }
+        
+        .invoice-box-header {
+            background: #1e40af;
+            color: white;
+            padding: 8px;
+            text-align: center;
+        }
+        
         .invoice-title {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: bold;
-            margin-bottom: 10px;
+            margin: 0;
         }
+        
+        .invoice-details {
+            padding: 10px;
+            font-size: 11px;
+        }
+        
+        .invoice-details-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 4px 0;
+        }
+        
+        .invoice-details-label {
+            font-weight: bold;
+            color: #3c3c3c;
+        }
+        
+        /* ======== BILL TO SECTION ======== */
         .bill-to {
             margin: 20px 0;
         }
+        
         .bill-to-title {
             font-weight: bold;
+            color: #1e40af;
+            font-size: 12px;
             margin-bottom: 8px;
+            letter-spacing: 0.5px;
         }
+        
         .client-name {
             font-weight: bold;
             font-size: 14px;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
+            color: #000;
         }
+        
+        .bill-to div {
+            margin: 3px 0;
+            font-size: 11px;
+            color: #3c3c3c;
+        }
+        
+        /* ======== SERVICE PERIOD ======== */
         .service-period {
             background: #eff6ff;
-            padding: 8px 12px;
+            border: 1px solid #1e40af;
+            padding: 10px 15px;
             margin: 15px 0;
             font-weight: bold;
+            color: #1e40af;
+            font-size: 12px;
         }
+        
+        /* ======== TABLE ======== */
         .table {
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
             font-size: 11px;
         }
+        
         .table th {
-            background: #f0f0f0;
-            padding: 8px 4px;
+            background: #1e40af;
+            color: white;
+            padding: 10px 6px;
             text-align: left;
             font-weight: bold;
-            border: 1px solid #ddd;
+            border: 1px solid #1e40af;
         }
+        
         .table td {
-            padding: 6px 4px;
+            padding: 8px 6px;
             border: 1px solid #ddd;
+            color: #282828;
         }
+        
+        .table tbody tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
         .table .item-code { width: 15%; font-size: 10px; }
         .table .description { width: 25%; }
         .table .dates { width: 30%; font-size: 10px; }
         .table .quantity { width: 8%; text-align: right; }
         .table .rate { width: 12%; text-align: right; }
         .table .amount { width: 10%; text-align: right; font-weight: bold; }
+        
+        /* ======== TOTALS ======== */
         .totals {
             text-align: right;
             margin: 20px 0;
         }
+        
         .total-row {
             display: inline-block;
             background: #1e40af;
             color: white;
-            padding: 8px 15px;
+            padding: 12px 20px;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 16px;
+            border: 2px solid #1e40af;
         }
+        
+        /* ======== PAYMENT DETAILS ======== */
         .payment-details {
-            background: #f5f5f5;
-            padding: 12px 15px;
+            background: #f9fafb;
+            padding: 15px 20px;
             margin: 20px 0;
-            font-size: 10px;
+            font-size: 11px;
             border-left: 4px solid #1e40af;
+            border: 1px solid #e5e7eb;
         }
+        
         .payment-details-title {
             font-weight: bold;
-            margin-bottom: 6px;
+            color: #1e40af;
+            font-size: 12px;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
         }
+        
         .payment-detail-line {
-            margin: 3px 0;
+            margin: 5px 0;
+            color: #3c3c3c;
         }
+        
+        /* ======== FOOTER ======== */
         .footer {
             text-align: center;
-            margin-top: 30px;
+            margin-top: 40px;
             padding-top: 15px;
-            border-top: 1px solid #ccc;
+            border-top: 2px solid #1e40af;
+            color: #1e40af;
+            font-size: 11px;
+        }
+        
+        .footer-tagline {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .footer-contact {
             color: #666;
             font-size: 10px;
+            margin: 3px 0;
         }
+        
+        /* ======== EDITABLE FIELDS ======== */
         .editable {
             border: none;
             background: transparent;
@@ -193,43 +291,71 @@ export async function generateHTML(invoiceData: InvoiceData): Promise<void> {
             padding: 2px;
             border-radius: 2px;
         }
+        
         .editable:focus {
-            outline: 1px solid #1e40af;
-            background: #f8f9fa;
+            outline: 2px solid #1e40af;
+            background: #fffbeb;
         }
+        
+        /* ======== PRINT STYLES ======== */
         @media print {
-            body { margin: 0; }
-            .editable { border: none !important; background: transparent !important; }
-            .editable:focus { outline: none !important; }
+            body { 
+                margin: 0; 
+                padding: 0;
+                background: white;
+            }
+            .container {
+                box-shadow: none;
+                padding: 0;
+            }
+            .editable { 
+                border: none !important; 
+                background: transparent !important; 
+            }
+            .editable:focus { 
+                outline: none !important; 
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- HEADER -->
         <div class="header">
             <div class="company-info">
                 <div class="company-name">${COMPANY_INFO.name}</div>
-                <div><strong>ABN:</strong> ${COMPANY_INFO.abn}</div>
                 <div>${COMPANY_INFO.address}</div>
-                <div>${COMPANY_INFO.phone}</div>
+                <div>T: ${COMPANY_INFO.phone}</div>
                 <div>${COMPANY_INFO.email}</div>
             </div>
 
             <div class="logo">
-                ${logoDataUrl ? `<img src="${logoDataUrl}" alt="Company Logo" style="max-width: 150px; height: auto;">` : '<div style="font-size: 24px; font-weight: bold; color: #4CAF50;">BrightSupport</div>'}
+                ${logoDataUrl ? `<img src="${logoDataUrl}" alt="Company Logo" style="max-width: 120px;">` : '<div style="font-size: 24px; font-weight: bold; color: #1e40af;">BrightSupport</div>'}
             </div>
 
-            <div class="invoice-info">
-                <div class="invoice-title">INVOICE</div>
-                <div><strong>Invoice #:</strong> ${invoiceData.invoiceNumber}</div>
-                <div><strong>Date:</strong> ${formatInvoiceDate(invoiceData.invoiceDate)}</div>
+            <div class="invoice-box">
+                <div class="invoice-box-header">
+                    <div class="invoice-title">INVOICE</div>
+                </div>
+                <div class="invoice-details">
+                    <div class="invoice-details-row">
+                        <span class="invoice-details-label">Invoice Number:</span>
+                        <span>${invoiceData.invoiceNumber}</span>
+                    </div>
+                    <div class="invoice-details-row">
+                        <span class="invoice-details-label">Date:</span>
+                        <span>${formatInvoiceDate(invoiceData.invoiceDate)}</span>
+                    </div>
+                </div>
             </div>
         </div>
 
+        <!-- BILL TO -->
         <div class="bill-to">
-            <div class="bill-to-title">BILL TO:</div>
+            <div class="bill-to-title">BILL TO</div>
             <div class="client-name" contenteditable="true">${invoiceData.clientInfo.name}</div>
             <div><strong>NDIS Number:</strong> <span contenteditable="true">${invoiceData.clientInfo.ndisNumber}</span></div>
+            ${invoiceData.clientInfo.dateOfBirth ? `<div><strong>DOB:</strong> <span contenteditable="true">${formatInvoiceDate(new Date(invoiceData.clientInfo.dateOfBirth))}</span></div>` : ''}
             ${invoiceData.clientInfo.address ? `<div contenteditable="true">${invoiceData.clientInfo.address}</div>` : ''}
             ${invoiceData.clientInfo.planManager ? `
                 <div><strong>Plan Manager:</strong> <span contenteditable="true">${invoiceData.clientInfo.planManager}</span></div>
@@ -237,6 +363,7 @@ export async function generateHTML(invoiceData: InvoiceData): Promise<void> {
             ` : ''}
         </div>
 
+        <!-- SERVICE PERIOD -->
         <div class="service-period">
             Service Period: ${formatInvoiceDate(invoiceData.startDate)} to ${formatInvoiceDate(invoiceData.endDate)}
         </div>
@@ -286,22 +413,25 @@ export async function generateHTML(invoiceData: InvoiceData): Promise<void> {
             </tbody>
         </table>
 
+        <!-- TOTALS -->
         <div class="totals">
             <div class="total-row">
                 TOTAL: ${formatCurrency(invoiceData.total)}
             </div>
         </div>
 
+        <!-- PAYMENT DETAILS -->
         <div class="payment-details">
-            <div class="payment-details-title">Payment Details:</div>
+            <div class="payment-details-title">PAYMENT DETAILS</div>
             <div class="payment-detail-line">Account Name: ${COMPANY_INFO.bankDetails.accountName}</div>
             <div class="payment-detail-line">BSB: ${COMPANY_INFO.bankDetails.bsb}</div>
             <div class="payment-detail-line">Account Number: ${COMPANY_INFO.bankDetails.accountNumber}</div>
         </div>
 
+        <!-- FOOTER -->
         <div class="footer">
-            <div>Thank you for your business!</div>
-            <div>For queries, please contact ${COMPANY_INFO.email}</div>
+            <div class="footer-tagline">Thank you for your business!</div>
+            <div class="footer-contact">For any queries, please contact ${COMPANY_INFO.email} or call ${COMPANY_INFO.phone}</div>
         </div>
     </div>
 

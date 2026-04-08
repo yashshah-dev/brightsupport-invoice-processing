@@ -535,6 +535,18 @@ export default function InvoiceForm({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
+              DOB
+            </label>
+            <input
+              type="date"
+              value={formData.clientInfo.dateOfBirth || ''}
+              onChange={(e) => updateClientInfo('dateOfBirth', e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Plan Manager
             </label>
             <input

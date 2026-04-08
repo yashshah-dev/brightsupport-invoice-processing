@@ -67,7 +67,7 @@ export default function InvoicePreview({ invoiceData, dayCategories }: InvoicePr
         {/* Logo */}
         <div className="flex-shrink-0 mx-8">
           <img 
-            src={asset('/logo/header-logo.png')} 
+            src={asset('/logo/logo-brightsupport.jpeg')} 
             alt="Bright Support Logo" 
             className="h-32 w-auto object-contain"
           />
@@ -88,6 +88,9 @@ export default function InvoicePreview({ invoiceData, dayCategories }: InvoicePr
         <div className="text-sm text-gray-700 space-y-1">
           <p className="font-semibold text-base">{invoiceData.clientInfo.name}</p>
           <p>NDIS Number: {invoiceData.clientInfo.ndisNumber}</p>
+          {invoiceData.clientInfo.dateOfBirth && (
+            <p>DOB: {formatInvoiceDate(new Date(invoiceData.clientInfo.dateOfBirth))}</p>
+          )}
           {invoiceData.clientInfo.address && <p>{invoiceData.clientInfo.address}</p>}
           {invoiceData.clientInfo.planManager && (
             <div className="mt-2">

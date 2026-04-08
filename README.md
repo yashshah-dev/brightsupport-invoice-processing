@@ -127,7 +127,7 @@ brightsupport-invoice-processing/
 │   └── invoice.ts               # TypeScript interfaces
 ├── public/
 │   └── logo/
-│       └── header-logo.png      # Company logo
+│       └── logo-brightsupport.jpeg      # Company logo
 ├── next.config.js               # Next.js configuration
 ├── tailwind.config.ts           # Tailwind CSS configuration
 └── package.json                 # Dependencies & scripts

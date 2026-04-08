@@ -53,7 +53,7 @@ export async function generateWord(invoiceData: InvoiceData): Promise<void> {
   // Load logo image
   let logoData: Uint8Array | undefined;
   try {
-    const response = await fetch(asset('/logo/header-logo.png'));
+    const response = await fetch(asset('/logo/logo-brightsupport.jpeg'));
     if (response.ok) {
       const arrayBuffer = await response.arrayBuffer();
       logoData = new Uint8Array(arrayBuffer);
@@ -83,6 +83,17 @@ export async function generateWord(invoiceData: InvoiceData): Promise<void> {
       spacing: { after: 100 },
     }),
   ];
+  
+  if (invoiceData.clientInfo.dateOfBirth) {
+    clientInfoParagraphs.push(
+      new Paragraph({
+        children: [
+          new TextRun({ text: `DOB: ${formatInvoiceDate(new Date(invoiceData.clientInfo.dateOfBirth))}`, size: 18 }),
+        ],
+        spacing: { after: 100 },
+      })
+    );
+  }
   
   if (invoiceData.clientInfo.address) {
     clientInfoParagraphs.push(

@@ -129,9 +129,9 @@ export const COMPANY_INFO = {
   name: 'Bright Support',
   abn: 'ABN: 32659000978',
   address: '10 Bridgewater Ave, Kialla VIC 3631',
-  phone: 'M- 0414 368 872',
+  phone: '1800 407 508',
   email: 'care@brightsupport.com.au',
-  logoPath: '/logo/header-logo.png',
+  logoPath: '/logo/logo-brightsupport.jpeg',
   bankDetails: {
     accountName: 'AYSG PTY LTD',
     bsb: '063 876',

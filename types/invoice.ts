@@ -29,6 +29,7 @@ export interface InvoiceLineItem {
 export interface ClientInfo {
   name: string;
   ndisNumber: string;
+  dateOfBirth?: string;
   address: string;
   planManager?: string;
   planManagerEmail?: string;
