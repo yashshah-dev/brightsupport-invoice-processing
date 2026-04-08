@@ -2,49 +2,261 @@
   {
     "id": "weekday-default",
     "category": "weekday",
+    "registrationGroupNumber": "0125",
+    "registrationGroupName": "Participation In Community, Social And Civic Activities",
     "code": "04_104_0125_6_1",
-    "description": "Access Community Social and Rec Activity - Weekdays Daytime",
-    "rate": 67.56,
+    "description": "Access Community Social and Rec Activ - Standard - Weekday Daytime",
+    "rate": 70.23,
     "active": true
   },
   {
-    "id": "weekday_night-default",
-    "category": "weekday_night",
-    "code": "04_104_0125_6_1",
-    "description": "Access Community Social and Rec Activity - Weekday Night",
-    "rate": 67.56,
+    "id": "weekday_evening-default",
+    "category": "weekday_evening",
+    "registrationGroupNumber": "0125",
+    "registrationGroupName": "Participation In Community, Social And Civic Activities",
+    "code": "04_103_0125_6_1",
+    "description": "Access Community Social and Rec Activ - Standard - Weekday Evening",
+    "rate": 77.38,
     "active": true
   },
   {
     "id": "saturday-default",
     "category": "saturday",
+    "registrationGroupNumber": "0125",
+    "registrationGroupName": "Participation In Community, Social And Civic Activities",
     "code": "04_105_0125_6_1",
-    "description": "Access Community Social and Rec Activity - Standard Daytime - Saturday",
-    "rate": 95.07,
+    "description": "Access Community Social and Rec Activ - Standard - Saturday",
+    "rate": 98.83,
     "active": true
   },
   {
     "id": "sunday-default",
     "category": "sunday",
+    "registrationGroupNumber": "0125",
+    "registrationGroupName": "Participation In Community, Social And Civic Activities",
     "code": "04_106_0125_6_1",
-    "description": "Access Community Social and Rec Activity Standard - Sunday Daytime",
-    "rate": 122.59,
+    "description": "Access Community Social and Rec Activ - Standard - Sunday",
+    "rate": 127.43,
     "active": true
   },
   {
     "id": "publicHoliday-default",
     "category": "publicHoliday",
+    "registrationGroupNumber": "0125",
+    "registrationGroupName": "Participation In Community, Social And Civic Activities",
     "code": "04_102_0125_6_1",
-    "description": "Access Community Social and Rec Activity Standard - Public Holiday - Daytime",
-    "rate": 150.10,
+    "description": "Access Community Social and Rec Activ - Standard - Public Holiday",
+    "rate": 156.03,
     "active": true
   },
   {
     "id": "travel-default",
     "category": "travel",
+    "registrationGroupNumber": "0125",
+    "registrationGroupName": "Participation In Community, Social And Civic Activities",
     "code": "04_799_0125_6_1",
-    "description": "Provider Travel Non Labor Cost",
-    "rate": 1.0,
+    "description": "Provider travel - non-labour costs",
+    "rate": 1.00,
+    "active": true
+  },
+  {
+    "id": "04_400_0104_1_1",
+    "category": "weekday",
+    "registrationGroupNumber": "0104",
+    "registrationGroupName": "High Intensity Daily Personal Activities",
+    "code": "04_400_0104_1_1",
+    "description": "Access Community Social and Rec Activ - High Intensity - Weekday Daytime",
+    "rate": 75.98,
+    "active": true
+  },
+  {
+    "id": "04_401_0104_1_1",
+    "category": "weekday_evening",
+    "registrationGroupNumber": "0104",
+    "registrationGroupName": "High Intensity Daily Personal Activities",
+    "code": "04_401_0104_1_1",
+    "description": "Access Community Social and Rec Activ - High Intensity - Weekday Evening",
+    "rate": 83.72,
+    "active": true
+  },
+  {
+    "id": "04_402_0104_1_1",
+    "category": "saturday",
+    "registrationGroupNumber": "0104",
+    "registrationGroupName": "High Intensity Daily Personal Activities",
+    "code": "04_402_0104_1_1",
+    "description": "Access Community Social and Rec Activ - High Intensity - Saturday",
+    "rate": 106.93,
+    "active": true
+  },
+  {
+    "id": "04_403_0104_1_1",
+    "category": "sunday",
+    "registrationGroupNumber": "0104",
+    "registrationGroupName": "High Intensity Daily Personal Activities",
+    "code": "04_403_0104_1_1",
+    "description": "Access Community Social and Rec Activ - High Intensity - Sunday",
+    "rate": 137.87,
+    "active": true
+  },
+  {
+    "id": "04_404_0104_1_1",
+    "category": "publicHoliday",
+    "registrationGroupNumber": "0104",
+    "registrationGroupName": "High Intensity Daily Personal Activities",
+    "code": "04_404_0104_1_1",
+    "description": "Access Community Social and Rec Activ - High Intensity - Public Holiday",
+    "rate": 168.81,
+    "active": true
+  },
+  {
+    "id": "04_799_0104_6_1",
+    "category": "travel",
+    "registrationGroupNumber": "0104",
+    "registrationGroupName": "High Intensity Daily Personal Activities",
+    "code": "04_799_0104_6_1",
+    "description": "Provider travel - non-labour costs",
+    "rate": 1.00,
+    "active": true
+  },
+  {
+    "id": "01_405_0104_1_1",
+    "category": "weekday_night",
+    "registrationGroupNumber": "0104",
+    "registrationGroupName": "High Intensity Daily Personal Activities",
+    "code": "01_405_0104_1_1",
+    "description": "Assistance With Self-Care Activities - High Intensity - Weekday Night",
+    "rate": 85.27,
+    "active": true
+  },
+  {
+    "id": "04_102_0136_6_1",
+    "category": "weekday",
+    "registrationGroupNumber": "0136",
+    "registrationGroupName": "Group And Centre Based Activities",
+    "code": "04_102_0136_6_1",
+    "description": "Group Activities - Standard - Weekday Daytime",
+    "rate": 70.23,
+    "active": true
+  },
+  {
+    "id": "04_103_0136_6_1",
+    "category": "weekday_evening",
+    "registrationGroupNumber": "0136",
+    "registrationGroupName": "Group And Centre Based Activities",
+    "code": "04_103_0136_6_1",
+    "description": "Group Activities - Standard - Weekday Evening",
+    "rate": 77.38,
+    "active": true
+  },
+  {
+    "id": "04_104_0136_6_1",
+    "category": "saturday",
+    "registrationGroupNumber": "0136",
+    "registrationGroupName": "Group And Centre Based Activities",
+    "code": "04_104_0136_6_1",
+    "description": "Group Activities - Standard - Saturday",
+    "rate": 98.83,
+    "active": true
+  },
+  {
+    "id": "04_105_0136_6_1",
+    "category": "sunday",
+    "registrationGroupNumber": "0136",
+    "registrationGroupName": "Group And Centre Based Activities",
+    "code": "04_105_0136_6_1",
+    "description": "Group Activities - Standard - Sunday",
+    "rate": 127.43,
+    "active": true
+  },
+  {
+    "id": "04_106_0136_6_1",
+    "category": "publicHoliday",
+    "registrationGroupNumber": "0136",
+    "registrationGroupName": "Group And Centre Based Activities",
+    "code": "04_106_0136_6_1",
+    "description": "Group Activities - Standard - Public Holiday",
+    "rate": 156.03,
+    "active": true
+  },
+  {
+    "id": "04_799_0136_6_1",
+    "category": "travel",
+    "registrationGroupNumber": "0136",
+    "registrationGroupName": "Group And Centre Based Activities",
+    "code": "04_799_0136_6_1",
+    "description": "Provider travel - non-labour costs",
+    "rate": 1.00,
+    "active": true
+  },
+  {
+    "id": "weekday_night-default",
+    "category": "weekday_night",
+    "registrationGroupNumber": "0107",
+    "registrationGroupName": "Daily Personal Activities",
+    "code": "01_002_0107_1_1",
+    "description": "Assistance With Self-Care Activities - Standard - Weekday Night",
+    "rate": 78.81,
+    "active": true
+  },
+  {
+    "id": "01_010_0107_1_1",
+    "category": "weekday_night",
+    "registrationGroupNumber": "0107",
+    "registrationGroupName": "Daily Personal Activities",
+    "code": "01_010_0107_1_1",
+    "description": "Assistance With Self-Care Activities - Night-Time Sleepover",
+    "rate": 297.60,
+    "active": true
+  },
+  {
+    "id": "04_450_0125_1_1",
+    "category": "weekday",
+    "registrationGroupNumber": "0125",
+    "registrationGroupName": "Participation In Community, Social And Civic Activities",
+    "code": "04_450_0125_1_1",
+    "description": "Intensive and Complex Behaviour Supports - Weekday Daytime",
+    "rate": 75.98,
+    "active": true
+  },
+  {
+    "id": "04_451_0125_1_1",
+    "category": "weekday_evening",
+    "registrationGroupNumber": "0125",
+    "registrationGroupName": "Participation In Community, Social And Civic Activities",
+    "code": "04_451_0125_1_1",
+    "description": "Intensive and Complex Behaviour Supports - Weekday Evening",
+    "rate": 83.72,
+    "active": true
+  },
+  {
+    "id": "04_452_0125_1_1",
+    "category": "saturday",
+    "registrationGroupNumber": "0125",
+    "registrationGroupName": "Participation In Community, Social And Civic Activities",
+    "code": "04_452_0125_1_1",
+    "description": "Intensive and Complex Behaviour Supports - Saturday",
+    "rate": 106.93,
+    "active": true
+  },
+  {
+    "id": "04_453_0125_1_1",
+    "category": "sunday",
+    "registrationGroupNumber": "0125",
+    "registrationGroupName": "Participation In Community, Social And Civic Activities",
+    "code": "04_453_0125_1_1",
+    "description": "Intensive and Complex Behaviour Supports - Sunday",
+    "rate": 137.87,
+    "active": true
+  },
+  {
+    "id": "04_454_0125_1_1",
+    "category": "publicHoliday",
+    "registrationGroupNumber": "0125",
+    "registrationGroupName": "Participation In Community, Social And Civic Activities",
+    "code": "04_454_0125_1_1",
+    "description": "Intensive and Complex Behaviour Supports - Public Holiday",
+    "rate": 168.81,
     "active": true
   }
 ]

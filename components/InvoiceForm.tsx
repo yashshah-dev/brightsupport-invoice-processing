@@ -425,11 +425,16 @@ export default function InvoiceForm({
 
   const getAllocationValidationErrors = (date: Date, allocations: DailyServiceAllocation[]) => {
     const dayType = getDayType(date);
+    // Weekday days can use weekday, weekday_evening, or weekday_night rates
+    const validCategories: string[] =
+      dayType === 'weekday'
+        ? ['weekday', 'weekday_evening', 'weekday_night']
+        : [dayType];
     return allocations
       .map((row) => {
         const service = serviceOptions.find((item) => item.id === row.serviceId);
         if (!service) return null;
-        if (service.category === dayType) return null;
+        if (validCategories.includes(service.category)) return null;
         return `Invalid mapping: ${dayType} day is using ${service.category} service code (${service.code})`;
       })
       .filter((message): message is string => !!message);

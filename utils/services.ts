@@ -43,6 +43,12 @@ export function saveServices(items: ServiceItem[]) {
   }
 }
 
+export function clearServicesOverride() {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+}
+
 export function exportServicesFile(items: ServiceItem[]) {
   const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);

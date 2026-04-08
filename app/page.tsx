@@ -29,12 +29,14 @@ export default function InvoiceGenerator() {
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [descriptionOverrides, setDescriptionOverrides] = useState<Record<string, string>>({});
   const [quantityOverrides, setQuantityOverrides] = useState<Record<string, number>>({});
+  const [supportCodeOverrides, setSupportCodeOverrides] = useState<Record<string, string>>({});
 
   const applyLineItemOverrides = (invoice: InvoiceData): InvoiceData => {
     const lineItems = invoice.lineItems.map((item) => {
       const key = getLineItemKey(item);
       const description = descriptionOverrides[key];
       const quantity = quantityOverrides[key];
+      const supportCode = supportCodeOverrides[key];
       const resolvedQuantity = quantity !== undefined ? quantity : item.quantity;
       const next = {
         ...item,
@@ -43,6 +45,9 @@ export default function InvoiceGenerator() {
       };
       if (description !== undefined) {
         next.description = description;
+      }
+      if (supportCode !== undefined) {
+        next.serviceCode = supportCode;
       }
       return next;
     });
@@ -138,6 +143,21 @@ export default function InvoiceGenerator() {
         ...prev,
         lineItems: prev.lineItems.map((line) =>
           getLineItemKey(line) === key ? { ...line, quantity: normalizedQuantity } : line
+        ),
+      });
+    });
+  };
+
+  const handleSupportCodeChange = (item: InvoiceData['lineItems'][number], code: string) => {
+    const key = getLineItemKey(item);
+    setSupportCodeOverrides((prev) => ({ ...prev, [key]: code }));
+
+    setInvoiceData((prev) => {
+      if (!prev) return prev;
+      return applyLineItemOverrides({
+        ...prev,
+        lineItems: prev.lineItems.map((line) =>
+          getLineItemKey(line) === key ? { ...line, serviceCode: code } : line
         ),
       });
     });
@@ -274,6 +294,7 @@ export default function InvoiceGenerator() {
                   dayCategories={dayCategories}
                   onDescriptionChange={handleDescriptionChange}
                   onQuantityChange={handleQuantityChange}
+                  onSupportCodeChange={handleSupportCodeChange}
                 />
 
                 {/* Validation Section */}
