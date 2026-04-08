@@ -13,6 +13,7 @@ interface CostBreakdownProps {
   gst: number;
   total: number;
   dayCategories: DayCategory[];
+  onDescriptionChange?: (item: InvoiceLineItem, description: string) => void;
 }
 
 // Helper function to group dates by category
@@ -47,7 +48,8 @@ export default function CostBreakdown({
   subtotal, 
   gst, 
   total,
-  dayCategories 
+  dayCategories,
+  onDescriptionChange,
 }: CostBreakdownProps) {
   const dayCounts = countDaysByCategory(dayCategories);
   const datesByCategory = groupDatesByCategory(dayCategories);
@@ -132,7 +134,15 @@ export default function CostBreakdown({
               return (
                 <tr key={index} className="border-b border-gray-200 hover:bg-gray-50">
                   <td className="py-3 px-2 text-gray-600 font-mono text-xs">{item.serviceCode}</td>
-                  <td className="py-3 px-2 text-gray-800">{item.description}</td>
+                  <td className="py-3 px-2 text-gray-800">
+                    <input
+                      type="text"
+                      value={item.description}
+                      onChange={(e) => onDescriptionChange?.(item, e.target.value)}
+                      className="w-full px-2 py-1 border border-gray-200 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Custom description"
+                    />
+                  </td>
                   <td className="py-3 px-2 text-gray-600 text-xs max-w-xs">
                     <div className="break-words">{datesStr}</div>
                   </td>

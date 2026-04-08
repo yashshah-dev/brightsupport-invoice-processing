@@ -17,6 +17,9 @@ import dynamic from 'next/dynamic';
 const ServiceCatalogAdmin = dynamic(() => import('@/components/ServiceCatalogAdmin'), { ssr: false });
 import { isSameDay } from 'date-fns';
 
+const getLineItemKey = (item: InvoiceData['lineItems'][number]) =>
+  `${item.serviceCode}|${item.unitPrice}|${item.category || ''}|${item.dates || ''}`;
+
 export default function InvoiceGenerator() {
   const [formData, setFormData] = useState<FormData | null>(null);
   const [dayCategories, setDayCategories] = useState<DayCategory[]>([]);
@@ -24,6 +27,7 @@ export default function InvoiceGenerator() {
   const [activeTab, setActiveTab] = useState<'form' | 'preview' | 'catalog'>('form');
   const [manualHolidays, setManualHolidays] = useState<Array<{ date: Date; name: string }>>([]);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [descriptionOverrides, setDescriptionOverrides] = useState<Record<string, string>>({});
 
   // Update day categories when dates or manual holidays change
   useEffect(() => {
@@ -67,11 +71,32 @@ export default function InvoiceGenerator() {
         formData.perDayServiceAllocations,
         formData.selectedTravelServiceId,
         formData.travelEntries
-      ).then(invoice => setInvoiceData(invoice));
+      ).then((invoice) => {
+        const lineItems = invoice.lineItems.map((item) => {
+          const override = descriptionOverrides[getLineItemKey(item)];
+          return override !== undefined ? { ...item, description: override } : item;
+        });
+        setInvoiceData({ ...invoice, lineItems });
+      });
     } else {
       setInvoiceData(null);
     }
   }, [formData, dayCategories]);
+
+  const handleDescriptionChange = (item: InvoiceData['lineItems'][number], description: string) => {
+    const key = getLineItemKey(item);
+    setDescriptionOverrides((prev) => ({ ...prev, [key]: description }));
+
+    setInvoiceData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        lineItems: prev.lineItems.map((line) =>
+          getLineItemKey(line) === key ? { ...line, description } : line
+        ),
+      };
+    });
+  };
 
   const handleFormChange = (newFormData: FormData) => {
     setFormData(newFormData);
@@ -202,6 +227,7 @@ export default function InvoiceGenerator() {
                   gst={invoiceData.gst}
                   total={invoiceData.total}
                   dayCategories={dayCategories}
+                  onDescriptionChange={handleDescriptionChange}
                 />
 
                 {/* Validation Section */}
