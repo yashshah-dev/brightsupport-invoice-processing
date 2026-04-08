@@ -14,6 +14,7 @@ interface CostBreakdownProps {
   total: number;
   dayCategories: DayCategory[];
   onDescriptionChange?: (item: InvoiceLineItem, description: string) => void;
+  onQuantityChange?: (item: InvoiceLineItem, quantity: number) => void;
 }
 
 // Helper function to group dates by category
@@ -50,6 +51,7 @@ export default function CostBreakdown({
   total,
   dayCategories,
   onDescriptionChange,
+  onQuantityChange,
 }: CostBreakdownProps) {
   const dayCounts = countDaysByCategory(dayCategories);
   const datesByCategory = groupDatesByCategory(dayCategories);
@@ -146,7 +148,16 @@ export default function CostBreakdown({
                   <td className="py-3 px-2 text-gray-600 text-xs max-w-xs">
                     <div className="break-words">{datesStr}</div>
                   </td>
-                  <td className="py-3 px-2 text-right text-gray-800">{item.quantity}</td>
+                  <td className="py-3 px-2 text-right text-gray-800">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.quantity}
+                      onChange={(e) => onQuantityChange?.(item, parseFloat(e.target.value) || 0)}
+                      className="w-24 ml-auto px-2 py-1 border border-gray-200 rounded text-right focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </td>
                   <td className="py-3 px-2 text-right text-gray-800">{formatCurrency(item.unitPrice)}</td>
                   <td className="py-3 px-2 text-right font-semibold text-gray-900">
                     {formatCurrency(item.total)}

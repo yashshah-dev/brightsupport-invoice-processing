@@ -28,6 +28,37 @@ export default function InvoiceGenerator() {
   const [manualHolidays, setManualHolidays] = useState<Array<{ date: Date; name: string }>>([]);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [descriptionOverrides, setDescriptionOverrides] = useState<Record<string, string>>({});
+  const [quantityOverrides, setQuantityOverrides] = useState<Record<string, number>>({});
+
+  const applyLineItemOverrides = (invoice: InvoiceData): InvoiceData => {
+    const lineItems = invoice.lineItems.map((item) => {
+      const key = getLineItemKey(item);
+      const description = descriptionOverrides[key];
+      const quantity = quantityOverrides[key];
+      const resolvedQuantity = quantity !== undefined ? quantity : item.quantity;
+      const next = {
+        ...item,
+        quantity: resolvedQuantity,
+        total: Number((resolvedQuantity * item.unitPrice).toFixed(2)),
+      };
+      if (description !== undefined) {
+        next.description = description;
+      }
+      return next;
+    });
+
+    const subtotal = Number(lineItems.reduce((sum, line) => sum + line.total, 0).toFixed(2));
+    const gst = Number((subtotal * 0).toFixed(2));
+    const total = Number((subtotal + gst).toFixed(2));
+
+    return {
+      ...invoice,
+      lineItems,
+      subtotal,
+      gst,
+      total,
+    };
+  };
 
   // Update day categories when dates or manual holidays change
   useEffect(() => {
@@ -72,11 +103,7 @@ export default function InvoiceGenerator() {
         formData.selectedTravelServiceId,
         formData.travelEntries
       ).then((invoice) => {
-        const lineItems = invoice.lineItems.map((item) => {
-          const override = descriptionOverrides[getLineItemKey(item)];
-          return override !== undefined ? { ...item, description: override } : item;
-        });
-        setInvoiceData({ ...invoice, lineItems });
+        setInvoiceData(applyLineItemOverrides(invoice));
       });
     } else {
       setInvoiceData(null);
@@ -90,11 +117,29 @@ export default function InvoiceGenerator() {
     setInvoiceData((prev) => {
       if (!prev) return prev;
       return {
+        ...applyLineItemOverrides({
+          ...prev,
+          lineItems: prev.lineItems.map((line) =>
+            getLineItemKey(line) === key ? { ...line, description } : line
+          ),
+        }),
+      };
+    });
+  };
+
+  const handleQuantityChange = (item: InvoiceData['lineItems'][number], quantity: number) => {
+    const key = getLineItemKey(item);
+    const normalizedQuantity = Number(Math.max(0, quantity).toFixed(2));
+    setQuantityOverrides((prev) => ({ ...prev, [key]: normalizedQuantity }));
+
+    setInvoiceData((prev) => {
+      if (!prev) return prev;
+      return applyLineItemOverrides({
         ...prev,
         lineItems: prev.lineItems.map((line) =>
-          getLineItemKey(line) === key ? { ...line, description } : line
+          getLineItemKey(line) === key ? { ...line, quantity: normalizedQuantity } : line
         ),
-      };
+      });
     });
   };
 
@@ -228,6 +273,7 @@ export default function InvoiceGenerator() {
                   total={invoiceData.total}
                   dayCategories={dayCategories}
                   onDescriptionChange={handleDescriptionChange}
+                  onQuantityChange={handleQuantityChange}
                 />
 
                 {/* Validation Section */}
