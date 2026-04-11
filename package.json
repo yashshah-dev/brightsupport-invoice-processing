@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "sync:services": "node scripts/sync-services-from-csv.js",
     "export": "next build",
     "deploy": "npm run export && touch out/.nojekyll && touch out/CNAME"
   },

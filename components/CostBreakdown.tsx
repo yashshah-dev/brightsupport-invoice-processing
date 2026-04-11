@@ -15,7 +15,10 @@ interface CostBreakdownProps {
   dayCategories: DayCategory[];
   onDescriptionChange?: (item: InvoiceLineItem, description: string) => void;
   onQuantityChange?: (item: InvoiceLineItem, quantity: number) => void;
-  onSupportCodeChange?: (item: InvoiceLineItem, code: string) => void;
+  onRecalculate?: () => void;
+  onResetOverrides?: () => void;
+  hasOverrides?: boolean;
+  isStale?: boolean;
 }
 
 // Helper function to group dates by category
@@ -53,7 +56,10 @@ export default function CostBreakdown({
   dayCategories,
   onDescriptionChange,
   onQuantityChange,
-  onSupportCodeChange,
+  onRecalculate,
+  onResetOverrides,
+  hasOverrides,
+  isStale,
 }: CostBreakdownProps) {
   const dayCounts = countDaysByCategory(dayCategories);
   const datesByCategory = groupDatesByCategory(dayCategories);
@@ -62,14 +68,21 @@ export default function CostBreakdown({
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
         <h3 className="text-lg font-semibold text-gray-700 mb-4">Cost Breakdown</h3>
-        <p className="text-gray-500">Complete the form to see cost breakdown.</p>
+        <p className="text-gray-500">Complete the form and click &quot;Calculate Invoice&quot; to see cost breakdown.</p>
       </div>
     );
   }
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h3 className="text-lg font-semibold text-gray-700 mb-4">Cost Breakdown</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-700">Cost Breakdown</h3>
+        {isStale && (
+          <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded">
+            Form changed — recalculate to update
+          </span>
+        )}
+      </div>
 
       {/* Day Type Summary */}
       <div className="mb-6 p-4 bg-gray-50 rounded-lg">
@@ -102,82 +115,126 @@ export default function CostBreakdown({
         </div>
       </div>
 
-      {/* Line Items Table */}
-      <div className="overflow-x-auto mb-6">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b-2 border-gray-300">
-              <th className="text-left py-2 px-2 text-gray-700 font-semibold">Service Code</th>
-              <th className="text-left py-2 px-2 text-gray-700 font-semibold">Description</th>
-              <th className="text-left py-2 px-2 text-gray-700 font-semibold">Dates</th>
-              <th className="text-right py-2 px-2 text-gray-700 font-semibold">Qty</th>
-              <th className="text-right py-2 px-2 text-gray-700 font-semibold">Rate</th>
-              <th className="text-right py-2 px-2 text-gray-700 font-semibold">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lineItems.map((item, index) => {
-              // Use item.dates if available (for travel breakdown), otherwise determine from description
-              let datesStr = '';
-              if (item.dates) {
-                datesStr = item.dates;
-              } else {
-                let dates: Date[] = [];
-                if (item.description.toLowerCase().includes('weekday')) {
-                  dates = datesByCategory.weekday;
-                } else if (item.description.toLowerCase().includes('saturday')) {
-                  dates = datesByCategory.saturday;
-                } else if (item.description.toLowerCase().includes('sunday')) {
-                  dates = datesByCategory.sunday;
-                } else if (item.description.toLowerCase().includes('public holiday')) {
-                  dates = datesByCategory.publicHoliday;
-                }
-                datesStr = formatDatesList(dates);
-              }
+      {/* Line Items — Card layout for full description visibility */}
+      <div className="space-y-3 mb-6">
+        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 gap-y-0 px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b-2 border-gray-300">
+          <span>Service</span>
+          <span className="text-right w-20">Qty</span>
+          <span className="text-right w-20">Rate</span>
+          <span className="text-right w-24">Amount</span>
+        </div>
 
-              return (
-                <tr key={index} className="border-b border-gray-200 hover:bg-gray-50">
-                  <td className="py-3 px-2">
-                    <input
-                      type="text"
-                      value={item.serviceCode}
-                      onChange={(e) => onSupportCodeChange?.(item, e.target.value.toUpperCase())}
-                      className="w-full px-2 py-1 border border-gray-200 rounded font-mono text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
-                      placeholder="Support code"
-                    />
-                  </td>
-                  <td className="py-3 px-2 text-gray-800">
-                    <input
-                      type="text"
-                      value={item.description}
-                      onChange={(e) => onDescriptionChange?.(item, e.target.value)}
-                      className="w-full px-2 py-1 border border-gray-200 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Custom description"
-                    />
-                  </td>
-                  <td className="py-3 px-2 text-gray-600 text-xs max-w-xs">
-                    <div className="break-words">{datesStr}</div>
-                  </td>
-                  <td className="py-3 px-2 text-right text-gray-800">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={item.quantity}
-                      onChange={(e) => onQuantityChange?.(item, parseFloat(e.target.value) || 0)}
-                      className="w-24 ml-auto px-2 py-1 border border-gray-200 rounded text-right focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </td>
-                  <td className="py-3 px-2 text-right text-gray-800">{formatCurrency(item.unitPrice)}</td>
-                  <td className="py-3 px-2 text-right font-semibold text-gray-900">
-                    {formatCurrency(item.total)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        {lineItems.map((item, index) => {
+          let datesStr = '';
+          if (item.dates) {
+            datesStr = item.dates;
+          } else {
+            let dates: Date[] = [];
+            if (item.description.toLowerCase().includes('weekday')) {
+              dates = datesByCategory.weekday;
+            } else if (item.description.toLowerCase().includes('saturday')) {
+              dates = datesByCategory.saturday;
+            } else if (item.description.toLowerCase().includes('sunday')) {
+              dates = datesByCategory.sunday;
+            } else if (item.description.toLowerCase().includes('public holiday')) {
+              dates = datesByCategory.publicHoliday;
+            }
+            datesStr = formatDatesList(dates);
+          }
+
+          return (
+            <div
+              key={index}
+              className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 items-start px-3 py-3 rounded-lg border border-gray-100 hover:border-gray-200 bg-white hover:bg-gray-50 transition-colors"
+            >
+              {/* Service info - full width first column */}
+              <div className="min-w-0">
+                <p className="text-xs font-mono text-gray-500 mb-0.5">{item.serviceCode}</p>
+                <input
+                  key={`desc-${item.serviceCode}-${item.unitPrice}-${item.dates || ''}-${item.description}`}
+                  type="text"
+                  defaultValue={item.description}
+                  onBlur={(e) => onDescriptionChange?.(item, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      (e.currentTarget as HTMLInputElement).blur();
+                    }
+                  }}
+                  className="w-full text-sm text-gray-800 bg-transparent border-0 border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:ring-0 outline-none px-0 py-0.5 transition-colors"
+                  title={item.description}
+                />
+                {datesStr && datesStr !== 'None' && (
+                  <p className="text-[11px] text-gray-400 mt-1 break-words leading-relaxed">{datesStr}</p>
+                )}
+              </div>
+
+              {/* Qty */}
+              <div className="w-20">
+                <input
+                  key={`qty-${item.serviceCode}-${item.unitPrice}-${item.dates || ''}-${item.quantity}`}
+                  type="text"
+                  inputMode="decimal"
+                  defaultValue={item.quantity}
+                  onBlur={(e) => onQuantityChange?.(item, parseFloat(e.target.value) || 0)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      (e.currentTarget as HTMLInputElement).blur();
+                    }
+                  }}
+                  className="w-full px-2 py-1 text-sm text-right border border-gray-200 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Rate - read only */}
+              <div className="w-20 text-sm text-right text-gray-600 py-1">
+                {formatCurrency(item.unitPrice)}
+              </div>
+
+              {/* Amount */}
+              <div className="w-24 text-sm text-right font-semibold text-gray-900 py-1">
+                {formatCurrency(item.total)}
+              </div>
+            </div>
+          );
+        })}
       </div>
+
+      {/* Recalculate / reset actions */}
+      {(onRecalculate || onResetOverrides) && (
+        <div className="mb-4 space-y-2">
+          <button
+            type="button"
+            onClick={onRecalculate}
+            className={`w-full px-4 py-3 font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 ${
+              isStale
+                ? 'bg-blue-600 text-white hover:bg-blue-700 ring-2 ring-blue-300'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {isStale ? 'Recalculate Invoice' : 'Recalculate'}
+          </button>
+
+          {onResetOverrides && (
+            <button
+              type="button"
+              onClick={onResetOverrides}
+              disabled={!hasOverrides}
+              className={`w-full px-4 py-2.5 font-medium rounded-lg transition-colors ${
+                hasOverrides
+                  ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                  : 'bg-gray-50 text-gray-400 border border-gray-200 cursor-not-allowed'
+              }`}
+            >
+              Reset To Original Calculated Values
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Totals */}
       <div className="space-y-2 pt-4 border-t-2 border-gray-300">

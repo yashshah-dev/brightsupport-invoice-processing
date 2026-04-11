@@ -11,7 +11,8 @@ import { buildInvoiceData } from '@/utils/invoiceCalculations';
 import { generatePDF } from '@/utils/pdfGenerator';
 import { generateWord } from '@/utils/wordGenerator';
 import { generateHTML } from '@/utils/htmlGenerator';
-import { validateInvoice, ValidationResult } from '@/utils/invoiceValidator';
+import { validateInvoice, validateLineItemsAgainstCatalog, ValidationResult } from '@/utils/invoiceValidator';
+import { loadPublishedServices } from '@/utils/services';
 import dynamic from 'next/dynamic';
 
 const ServiceCatalogAdmin = dynamic(() => import('@/components/ServiceCatalogAdmin'), { ssr: false });
@@ -30,8 +31,25 @@ export default function InvoiceGenerator() {
   const [descriptionOverrides, setDescriptionOverrides] = useState<Record<string, string>>({});
   const [quantityOverrides, setQuantityOverrides] = useState<Record<string, number>>({});
   const [supportCodeOverrides, setSupportCodeOverrides] = useState<Record<string, string>>({});
+  const [isStale, setIsStale] = useState(false);
+  const hasOverrides =
+    Object.keys(descriptionOverrides).length > 0 ||
+    Object.keys(quantityOverrides).length > 0 ||
+    Object.keys(supportCodeOverrides).length > 0;
 
   const applyLineItemOverrides = (invoice: InvoiceData): InvoiceData => {
+    const formatHoursText = (hours: number) => {
+      const normalized = Number(hours.toFixed(2));
+      return Number.isInteger(normalized) ? `${normalized} hours` : `${normalized} hours`;
+    };
+
+    const stripHoursSuffix = (description: string) => {
+      const marker = ' - ';
+      const idx = description.lastIndexOf(marker);
+      if (idx === -1) return description;
+      return description.slice(0, idx);
+    };
+
     const lineItems = invoice.lineItems.map((item) => {
       const key = getLineItemKey(item);
       const description = descriptionOverrides[key];
@@ -45,6 +63,9 @@ export default function InvoiceGenerator() {
       };
       if (description !== undefined) {
         next.description = description;
+      } else if (quantity !== undefined && item.category !== 'travel') {
+        const base = stripHoursSuffix(item.description);
+        next.description = `${base} - ${formatHoursText(resolvedQuantity)}`;
       }
       if (supportCode !== undefined) {
         next.serviceCode = supportCode;
@@ -81,11 +102,15 @@ export default function InvoiceGenerator() {
     }
   }, [formData?.startDate, formData?.endDate, manualHolidays]);
 
-  // Recalculate invoice when form data or day categories change
+  // Mark invoice as stale when form data or day categories change (don't auto-recalculate)
   useEffect(() => {
-    // Reset validation whenever form data changes
     setValidationResult(null);
+    if (invoiceData) {
+      setIsStale(true);
+    }
+  }, [formData, dayCategories]);
 
+  const handleRecalculate = () => {
     if (
       formData?.invoiceDate &&
       formData?.startDate &&
@@ -109,58 +134,62 @@ export default function InvoiceGenerator() {
         formData.travelEntries
       ).then((invoice) => {
         setInvoiceData(applyLineItemOverrides(invoice));
+        setIsStale(false);
+        setValidationResult(null);
       });
-    } else {
-      setInvoiceData(null);
     }
-  }, [formData, dayCategories]);
+  };
+
+  const handleResetOverrides = () => {
+    if (
+      !formData?.invoiceDate ||
+      !formData?.startDate ||
+      !formData?.endDate ||
+      !formData?.clientInfo.name ||
+      !formData?.clientInfo.ndisNumber ||
+      dayCategories.length === 0
+    ) {
+      return;
+    }
+
+    setDescriptionOverrides({});
+    setQuantityOverrides({});
+    setSupportCodeOverrides({});
+
+    buildInvoiceData(
+      generateInvoiceNumber(),
+      formData.invoiceDate,
+      formData.startDate,
+      formData.endDate,
+      formData.clientInfo,
+      formData.defaultSchedule,
+      formData.travelKmPerDay,
+      dayCategories,
+      formData.perDaySchedules,
+      formData.perDayServiceAllocations,
+      formData.selectedTravelServiceId,
+      formData.travelEntries
+    ).then((invoice) => {
+      // Set raw calculated invoice (without manual overrides)
+      setInvoiceData(invoice);
+      setIsStale(false);
+      setValidationResult(null);
+    });
+  };
 
   const handleDescriptionChange = (item: InvoiceData['lineItems'][number], description: string) => {
     const key = getLineItemKey(item);
     setDescriptionOverrides((prev) => ({ ...prev, [key]: description }));
-
-    setInvoiceData((prev) => {
-      if (!prev) return prev;
-      return {
-        ...applyLineItemOverrides({
-          ...prev,
-          lineItems: prev.lineItems.map((line) =>
-            getLineItemKey(line) === key ? { ...line, description } : line
-          ),
-        }),
-      };
-    });
+    setIsStale(true);
+    setValidationResult(null);
   };
 
   const handleQuantityChange = (item: InvoiceData['lineItems'][number], quantity: number) => {
     const key = getLineItemKey(item);
     const normalizedQuantity = Number(Math.max(0, quantity).toFixed(2));
     setQuantityOverrides((prev) => ({ ...prev, [key]: normalizedQuantity }));
-
-    setInvoiceData((prev) => {
-      if (!prev) return prev;
-      return applyLineItemOverrides({
-        ...prev,
-        lineItems: prev.lineItems.map((line) =>
-          getLineItemKey(line) === key ? { ...line, quantity: normalizedQuantity } : line
-        ),
-      });
-    });
-  };
-
-  const handleSupportCodeChange = (item: InvoiceData['lineItems'][number], code: string) => {
-    const key = getLineItemKey(item);
-    setSupportCodeOverrides((prev) => ({ ...prev, [key]: code }));
-
-    setInvoiceData((prev) => {
-      if (!prev) return prev;
-      return applyLineItemOverrides({
-        ...prev,
-        lineItems: prev.lineItems.map((line) =>
-          getLineItemKey(line) === key ? { ...line, serviceCode: code } : line
-        ),
-      });
-    });
+    setIsStale(true);
+    setValidationResult(null);
   };
 
   const handleFormChange = (newFormData: FormData) => {
@@ -186,29 +215,45 @@ export default function InvoiceGenerator() {
     setManualHolidays((prev) => prev.filter((h) => !isSameDay(h.date, date)));
   };
 
-  const handleValidateInvoice = () => {
-    if (invoiceData) {
-      const result = validateInvoice(invoiceData);
-      setValidationResult(result);
-    }
+  const handleValidateInvoice = async () => {
+    if (!invoiceData) return;
+
+    const calcResult = validateInvoice(invoiceData);
+    const publishedCatalog = await loadPublishedServices();
+    const catalogErrors = validateLineItemsAgainstCatalog(invoiceData.lineItems, publishedCatalog);
+
+    setValidationResult({
+      ...calcResult,
+      isValid: calcResult.isValid && catalogErrors.length === 0,
+      errors: [...calcResult.errors, ...catalogErrors],
+    });
   };
 
   const handleExportPDF = () => {
-    if (invoiceData) {
-      generatePDF(invoiceData);
+    if (!invoiceData) return;
+    if (isStale || !validationResult?.isValid) {
+      alert('Please run validation and fix all errors before downloading.');
+      return;
     }
+    generatePDF(invoiceData);
   };
 
   const handleExportWord = async () => {
-    if (invoiceData) {
-      await generateWord(invoiceData);
+    if (!invoiceData) return;
+    if (isStale || !validationResult?.isValid) {
+      alert('Please run validation and fix all errors before downloading.');
+      return;
     }
+    await generateWord(invoiceData);
   };
 
   const handleExportHTML = () => {
-    if (invoiceData) {
-      generateHTML(invoiceData);
+    if (!invoiceData) return;
+    if (isStale || !validationResult?.isValid) {
+      alert('Please run validation and fix all errors before downloading.');
+      return;
     }
+    generateHTML(invoiceData);
   };
 
   const canGenerate =
@@ -283,6 +328,22 @@ export default function InvoiceGenerator() {
               manualHolidays={manualHolidays}
             />
 
+            {/* Calculate Invoice Button */}
+            {!invoiceData && canGenerate && dayCategories.length > 0 && (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <button
+                  type="button"
+                  onClick={handleRecalculate}
+                  className="w-full px-4 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  Calculate Invoice
+                </button>
+              </div>
+            )}
+
             {/* Cost Breakdown */}
             {invoiceData && (
               <>
@@ -294,7 +355,10 @@ export default function InvoiceGenerator() {
                   dayCategories={dayCategories}
                   onDescriptionChange={handleDescriptionChange}
                   onQuantityChange={handleQuantityChange}
-                  onSupportCodeChange={handleSupportCodeChange}
+                  onRecalculate={handleRecalculate}
+                  onResetOverrides={handleResetOverrides}
+                  hasOverrides={hasOverrides}
+                  isStale={isStale}
                 />
 
                 {/* Validation Section */}

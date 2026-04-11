@@ -1,7 +1,8 @@
 import { InvoiceData, InvoiceLineItem } from '@/types/invoice';
+import { ServiceItem } from '@/utils/services';
 
 export interface ValidationError {
-  type: 'hours' | 'km' | 'total' | 'lineitem';
+  type: 'hours' | 'km' | 'total' | 'lineitem' | 'catalog';
   message: string;
   expected?: number;
   actual?: number;
@@ -137,4 +138,45 @@ export function formatValidationErrors(errors: ValidationError[]): string {
   }
 
   return output;
+}
+
+/**
+ * Validate invoice line items against authoritative service catalog.
+ * Ensures support code exists and billed unit rate matches catalog rate.
+ */
+export function validateLineItemsAgainstCatalog(
+  lineItems: InvoiceLineItem[],
+  catalog: ServiceItem[]
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const activeCatalog = catalog.filter((item) => item.active);
+
+  for (const item of lineItems) {
+    const code = item.serviceCode.trim().toLowerCase();
+    const candidates = activeCatalog.filter((c) => c.code.trim().toLowerCase() === code);
+
+    if (candidates.length === 0) {
+      errors.push({
+        type: 'catalog',
+        message: `Support code ${item.serviceCode} is not present in the published NDIS catalog`,
+      });
+      continue;
+    }
+
+    const matchesRate = candidates.some(
+      (c) => Math.abs(Number(c.rate) - Number(item.unitPrice)) < 0.01
+    );
+
+    if (!matchesRate) {
+      const expectedRates = Array.from(new Set(candidates.map((c) => Number(c.rate).toFixed(2)))).join(', ');
+      errors.push({
+        type: 'catalog',
+        message: `Rate mismatch for ${item.serviceCode}: invoice rate $${Number(item.unitPrice).toFixed(2)} does not match catalog rate(s) $${expectedRates}`,
+        expected: Number(candidates[0].rate.toFixed(2)),
+        actual: Number(item.unitPrice.toFixed(2)),
+      });
+    }
+  }
+
+  return errors;
 }

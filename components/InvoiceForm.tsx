@@ -11,8 +11,54 @@ import DayExclusionCalendar from '@/components/DayExclusionCalendar';
 
 type GroupHoursTemplate = {
   registrationGroupNumber: string;
+  serviceIds: Record<AllocationCategory, string>;
   hours: number;
 };
+
+type AllocationCategory = 'weekday' | 'saturday' | 'sunday' | 'publicHoliday';
+
+// Plain text box. Only commits to parent on blur or Enter — never on keystroke.
+function HoursInput({
+  value,
+  onChange,
+  min = 0,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  step?: number;
+  min?: number;
+}) {
+  const [text, setText] = React.useState(String(value));
+  const isFocused = React.useRef(false);
+  const clean = (n: number) => Math.round(n * 1000) / 1000;
+
+  React.useEffect(() => {
+    if (!isFocused.current) {
+      setText(String(value));
+    }
+  }, [value]);
+
+  const commit = (raw: string) => {
+    isFocused.current = false;
+    const num = parseFloat(raw);
+    const resolved = isNaN(num) || num < min ? min : clean(num);
+    setText(String(resolved));
+    onChange(resolved);
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={text}
+      onFocus={() => { isFocused.current = true; }}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={(e) => commit(e.target.value)}
+      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit((e.target as HTMLInputElement).value); (e.target as HTMLInputElement).blur(); } }}
+      className="w-20 px-2 py-1 text-xs border border-gray-300 rounded text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+    />
+  );
+}
 
 interface InvoiceFormProps {
   onFormChange: (formData: FormData) => void;
@@ -163,7 +209,14 @@ export default function InvoiceForm({
 
   useEffect(() => {
     if (groupHoursTemplate.length === 0 && registrationGroups.length > 0) {
-      setGroupHoursTemplate([{ registrationGroupNumber: registrationGroups[0].number, hours: 8 }]);
+      const firstGroup = registrationGroups[0].number;
+      setGroupHoursTemplate([
+        {
+          registrationGroupNumber: firstGroup,
+          serviceIds: buildDefaultServiceSelection(firstGroup),
+          hours: 8,
+        },
+      ]);
     }
   }, [registrationGroups, groupHoursTemplate.length]);
 
@@ -253,7 +306,8 @@ export default function InvoiceForm({
 
   const updateDayServiceAllocations = (isoDate: string, allocations: DailyServiceAllocation[]) => {
     const next = { ...(formData.perDayServiceAllocations || {}) };
-    const validAllocations = allocations.filter((item) => item.serviceId && item.hours > 0);
+    // Keep rows that have a serviceId selected (even if hours is 0 while editing)
+    const validAllocations = allocations.filter((item) => item.serviceId);
     if (validAllocations.length === 0) {
       delete next[isoDate];
     } else {
@@ -300,6 +354,59 @@ export default function InvoiceForm({
     setExpandedDays((prev) => ({ ...prev, [isoDate]: !prev[isoDate] }));
   };
 
+  const expandAllDays = () => {
+    const dates = getDatesBetween(formData.startDate, formData.endDate);
+    const expanded: Record<string, boolean> = {};
+    dates.forEach((d) => {
+      const key = dateKey(d);
+      const match = dayCategories.find((day) => dateKey(day.date) === key);
+      if (!match || !match.isExcluded) {
+        expanded[key] = true;
+      }
+    });
+    setExpandedDays(expanded);
+  };
+
+  const collapseAllDays = () => {
+    setExpandedDays({});
+  };
+
+  const copyPreviousDayAllocations = (isoDate: string) => {
+    const dates = getDatesBetween(formData.startDate, formData.endDate)
+      .filter((d) => {
+        const key = dateKey(d);
+        const match = dayCategories.find((day) => dateKey(day.date) === key);
+        return !match || !match.isExcluded;
+      })
+      .map((d) => dateKey(d));
+    const currentIdx = dates.indexOf(isoDate);
+    if (currentIdx <= 0) return;
+    const prevDate = dates[currentIdx - 1];
+    const prevAllocations = formData.perDayServiceAllocations?.[prevDate] || [];
+    if (prevAllocations.length === 0) return;
+    updateDayServiceAllocations(isoDate, prevAllocations.map((a) => ({ ...a })));
+  };
+
+  const dayTypeBadge = (type: string) => {
+    const colors: Record<string, string> = {
+      weekday: 'bg-blue-100 text-blue-800',
+      saturday: 'bg-amber-100 text-amber-800',
+      sunday: 'bg-orange-100 text-orange-800',
+      publicHoliday: 'bg-red-100 text-red-800',
+    };
+    const labels: Record<string, string> = {
+      weekday: 'Weekday',
+      saturday: 'Sat',
+      sunday: 'Sun',
+      publicHoliday: 'Holiday',
+    };
+    return (
+      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${colors[type] || 'bg-gray-100 text-gray-700'}`}>
+        {labels[type] || type}
+      </span>
+    );
+  };
+
   const categoryByIsoDate = dayCategories.reduce((acc, item) => {
     acc[dateKey(item.date)] = item.type;
     return acc;
@@ -338,17 +445,53 @@ export default function InvoiceForm({
     );
   };
 
+  const getServiceAllocationBucket = (category: string): AllocationCategory => {
+    if (category === 'saturday' || category === 'sunday' || category === 'publicHoliday') {
+      return category;
+    }
+    return 'weekday';
+  };
+
+  const serviceMatchesBucket = (serviceCategory: string, bucket: AllocationCategory) => {
+    if (bucket === 'weekday') {
+      return ['weekday', 'weekday_evening', 'weekday_night'].includes(serviceCategory);
+    }
+    return serviceCategory === bucket;
+  };
+
+  const findFirstServiceForGroupAndBucket = (
+    registrationGroupNumber: string,
+    bucket: AllocationCategory
+  ) => {
+    const candidates = serviceOptions.filter(
+      (s) => s.registrationGroupNumber === registrationGroupNumber && serviceMatchesBucket(s.category, bucket)
+    );
+    return candidates[0] || null;
+  };
+
+  const buildDefaultServiceSelection = (registrationGroupNumber: string): Record<AllocationCategory, string> => ({
+    weekday: findFirstServiceForGroupAndBucket(registrationGroupNumber, 'weekday')?.id || '',
+    saturday: findFirstServiceForGroupAndBucket(registrationGroupNumber, 'saturday')?.id || '',
+    sunday: findFirstServiceForGroupAndBucket(registrationGroupNumber, 'sunday')?.id || '',
+    publicHoliday: findFirstServiceForGroupAndBucket(registrationGroupNumber, 'publicHoliday')?.id || '',
+  });
+
   const addGroupTemplateRow = () => {
     if (registrationGroups.length === 0) return;
+    const firstGroup = registrationGroups[0].number;
     setGroupHoursTemplate((prev) => [
       ...prev,
-      { registrationGroupNumber: registrationGroups[0].number, hours: 1 },
+      {
+        registrationGroupNumber: firstGroup,
+        serviceIds: buildDefaultServiceSelection(firstGroup),
+        hours: 1,
+      },
     ]);
   };
 
   const updateGroupTemplateRow = (
     index: number,
-    field: keyof GroupHoursTemplate,
+    field: 'registrationGroupNumber' | 'hours',
     value: string | number
   ) => {
     setGroupHoursTemplate((prev) => {
@@ -357,6 +500,25 @@ export default function InvoiceForm({
       next[index] = {
         ...next[index],
         [field]: field === 'hours' ? Number(value) : value,
+      };
+      return next;
+    });
+  };
+
+  const updateGroupTemplateService = (
+    index: number,
+    category: AllocationCategory,
+    serviceId: string
+  ) => {
+    setGroupHoursTemplate((prev) => {
+      const next = [...prev];
+      if (!next[index]) return prev;
+      next[index] = {
+        ...next[index],
+        serviceIds: {
+          ...next[index].serviceIds,
+          [category]: serviceId,
+        },
       };
       return next;
     });
@@ -376,7 +538,7 @@ export default function InvoiceForm({
       (row) => row.registrationGroupNumber && row.hours > 0
     );
     if (validTemplateRows.length === 0) {
-      alert('Add at least one registration group with hours greater than 0.');
+      alert('Add at least one row with group, category service code(s), and hours greater than 0.');
       return;
     }
 
@@ -387,21 +549,19 @@ export default function InvoiceForm({
       return !day || !day.isExcluded;
     });
 
-    const missingTypes: Array<{ date: string; type: string; group: string }> = [];
+    const missingServices: string[] = [];
 
     for (const date of dates) {
       const iso = dateKey(date);
       const dayType = getDayType(date);
+      const bucket = dayType as AllocationCategory;
 
       const allocationsForDay: DailyServiceAllocation[] = [];
       for (const row of validTemplateRows) {
-        const service = findGroupServiceForType(row.registrationGroupNumber, dayType);
+        const selectedServiceId = row.serviceIds[bucket];
+        const service = serviceOptions.find((s) => s.id === selectedServiceId);
         if (!service) {
-          missingTypes.push({
-            date: format(date, 'dd/MM/yyyy'),
-            type: dayType,
-            group: row.registrationGroupNumber,
-          });
+          missingServices.push(`${row.registrationGroupNumber} (${bucket})`);
           continue;
         }
         allocationsForDay.push({ serviceId: service.id, hours: row.hours });
@@ -413,11 +573,10 @@ export default function InvoiceForm({
     }
     updateFormData({ perDayServiceAllocations: next });
 
-    if (missingTypes.length > 0) {
+    if (missingServices.length > 0) {
       alert(
-        `Some group/type mappings were missing and skipped:\n${missingTypes
+        `Some selected group/category services were missing and skipped:\n${Array.from(new Set(missingServices))
           .slice(0, 5)
-          .map((x) => `${x.date} (${x.type}) - Group ${x.group}`)
           .join('\n')}`
       );
     }
@@ -667,10 +826,19 @@ export default function InvoiceForm({
 
               <div className="space-y-2">
                 {groupHoursTemplate.map((row, idx) => (
-                  <div key={`group-template-${idx}`} className="flex items-center gap-2 flex-wrap">
+                  <div key={`group-template-${idx}`} className="rounded border border-indigo-100 bg-white p-2 space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                     <select
                       value={row.registrationGroupNumber}
-                      onChange={(e) => updateGroupTemplateRow(idx, 'registrationGroupNumber', e.target.value)}
+                      onChange={(e) => {
+                        const nextGroup = e.target.value;
+                        updateGroupTemplateRow(idx, 'registrationGroupNumber', nextGroup);
+                        const defaults = buildDefaultServiceSelection(nextGroup);
+                        updateGroupTemplateService(idx, 'weekday', defaults.weekday);
+                        updateGroupTemplateService(idx, 'saturday', defaults.saturday);
+                        updateGroupTemplateService(idx, 'sunday', defaults.sunday);
+                        updateGroupTemplateService(idx, 'publicHoliday', defaults.publicHoliday);
+                      }}
                       className="min-w-[320px] px-2 py-1 text-xs border rounded bg-white"
                     >
                       {registrationGroups.map((group) => (
@@ -679,13 +847,9 @@ export default function InvoiceForm({
                         </option>
                       ))}
                     </select>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.5"
+                      <HoursInput
                       value={row.hours}
-                      onChange={(e) => updateGroupTemplateRow(idx, 'hours', parseFloat(e.target.value) || 0)}
-                      className="w-20 px-2 py-1 text-xs border rounded bg-white"
+                      onChange={(v) => updateGroupTemplateRow(idx, 'hours', v)}
                     />
                     <span className="text-xs text-gray-700">hours/day</span>
                     <button
@@ -695,20 +859,71 @@ export default function InvoiceForm({
                     >
                       Remove
                     </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {(['weekday', 'saturday', 'sunday', 'publicHoliday'] as AllocationCategory[]).map((bucket) => {
+                        const labelByBucket: Record<AllocationCategory, string> = {
+                          weekday: 'Weekday Service Code',
+                          saturday: 'Saturday Service Code',
+                          sunday: 'Sunday Service Code',
+                          publicHoliday: 'Public Holiday Service Code',
+                        };
+                        const optionsForBucket = serviceOptions.filter(
+                          (s) =>
+                            s.registrationGroupNumber === row.registrationGroupNumber &&
+                            serviceMatchesBucket(s.category, bucket)
+                        );
+
+                        return (
+                          <label key={`template-${idx}-${bucket}`} className="flex flex-col gap-1">
+                            <span className="text-[11px] text-gray-600">{labelByBucket[bucket]}</span>
+                            <select
+                              value={row.serviceIds[bucket] || ''}
+                              onChange={(e) => updateGroupTemplateService(idx, bucket, e.target.value)}
+                              className="px-2 py-1 text-xs border rounded bg-white"
+                            >
+                              <option value="">Select service...</option>
+                              {optionsForBucket.map((option) => (
+                                <option key={`template-${idx}-${bucket}-${option.id}`} value={option.id}>
+                                  {option.code} - {option.description}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <p className="text-xs text-gray-600">Day-by-day overrides</p>
-              <button
-                type="button"
-                onClick={() => updateFormData({ perDaySchedules: {}, perDayServiceAllocations: {} })}
-                className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-              >
-                Reset All Days
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={expandAllDays}
+                  className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
+                >
+                  Expand All
+                </button>
+                <button
+                  type="button"
+                  onClick={collapseAllDays}
+                  className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
+                >
+                  Collapse All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateFormData({ perDaySchedules: {}, perDayServiceAllocations: {} })}
+                  className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                >
+                  Reset All Days
+                </button>
+              </div>
             </div>
 
             <div className="max-h-80 overflow-auto space-y-2">
@@ -742,22 +957,32 @@ export default function InvoiceForm({
 
                 return (
                   <div key={iso} className="rounded border border-gray-200 bg-white">
-                    <div className="flex items-center justify-between px-3 py-2">
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">{d.toLocaleDateString()} ({['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day]})</p>
-                        <p className="text-xs text-gray-500">
-                          {allocations.length > 0
-                            ? `${allocations.length} service(s), ${allocatedHours}h${serviceNames ? ` - ${serviceNames}` : ''}`
-                            : 'No services allocated'}
-                        </p>
-                      </div>
+                    <div
+                      className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-50"
+                      onClick={() => toggleDayExpanded(iso)}
+                    >
                       <div className="flex items-center gap-2">
+                        <span className="text-gray-400 text-xs">{expanded ? '▼' : '▶'}</span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-gray-800">{d.toLocaleDateString()} ({['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day]})</p>
+                            {dayTypeBadge(getDayType(d))}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {allocations.length > 0
+                              ? `${allocations.length} service(s), ${allocatedHours}h${serviceNames ? ` — ${serviceNames}` : ''}`
+                              : 'No services allocated'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
-                          onClick={() => toggleDayExpanded(iso)}
-                          className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                          onClick={() => copyPreviousDayAllocations(iso)}
+                          className="px-2 py-1 text-xs bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100"
+                          title="Copy services from previous day"
                         >
-                          {expanded ? 'Collapse' : 'Edit'}
+                          ← Copy Prev
                         </button>
                         <button
                           type="button"
@@ -817,15 +1042,11 @@ export default function InvoiceForm({
                                       </option>
                                     ))}
                                   </select>
-                                  <input
-                                    type="number"
-                                    step="0.5"
-                                    min="0"
+                                  <HoursInput
                                     value={row.hours}
-                                    onChange={(e) => updateServiceAllocationRow(iso, idx, 'hours', parseFloat(e.target.value) || 0)}
-                                    className="w-20 px-2 py-1 text-xs border rounded"
+                                    onChange={(v) => updateServiceAllocationRow(iso, idx, 'hours', v)}
                                   />
-                                  <span className="text-xs text-gray-600">hours</span>
+                                  <span className="text-xs text-gray-600">hrs</span>
                                   <button
                                     type="button"
                                     onClick={() => removeServiceAllocationRow(iso, idx)}

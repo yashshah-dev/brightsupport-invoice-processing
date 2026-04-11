@@ -37,6 +37,19 @@ export async function loadServices(): Promise<ServiceItem[]> {
   return normalize(await res.json());
 }
 
+// Load the published catalog bundled with the app (authoritative baseline).
+// This intentionally ignores localStorage overrides.
+export async function loadPublishedServices(): Promise<ServiceItem[]> {
+  const res = await fetch(asset('/data/services.json'));
+  if (!res.ok) throw new Error('Failed to load published services catalog');
+  const items = (await res.json()) as ServiceItem[];
+  return items.map((item) => ({
+    ...item,
+    registrationGroupNumber: item.registrationGroupNumber || '',
+    registrationGroupName: item.registrationGroupName || '',
+  }));
+}
+
 export function saveServices(items: ServiceItem[]) {
   if (typeof window !== 'undefined') {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));

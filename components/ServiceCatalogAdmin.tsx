@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ServiceItem,
   ServiceCategory,
@@ -39,6 +39,9 @@ export default function ServiceCatalogAdmin() {
   const [query, setQuery]       = useState('');
   const [editing, setEditing]   = useState<ServiceItem | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [showOnlyGroupsWithActive, setShowOnlyGroupsWithActive] = useState(false);
+  const groupRefs = useRef<Record<string, HTMLElement | null>>({});
 
   useEffect(() => {
     loadServices().then(setItems).catch(console.error);
@@ -64,6 +67,51 @@ export default function ServiceCatalogAdmin() {
     return c;
   }, [items]);
 
+  const grouped = useMemo(() => {
+    const map = new Map<string, { key: string; groupNumber: string; groupName: string; services: ServiceItem[] }>();
+    for (const item of filtered) {
+      const groupNumber = item.registrationGroupNumber || 'UNASSIGNED';
+      const groupName = item.registrationGroupName || 'Unassigned Group';
+      const key = `${groupNumber}||${groupName}`;
+      if (!map.has(key)) {
+        map.set(key, { key, groupNumber, groupName, services: [] });
+      }
+      map.get(key)!.services.push(item);
+    }
+
+    return Array.from(map.values()).sort((a, b) => {
+      const byNumber = a.groupNumber.localeCompare(b.groupNumber, undefined, { numeric: true });
+      if (byNumber !== 0) return byNumber;
+      return a.groupName.localeCompare(b.groupName);
+    });
+  }, [filtered]);
+
+  const visibleGroups = useMemo(() => {
+    if (!showOnlyGroupsWithActive) return grouped;
+    return grouped.filter((g) => g.services.some((s) => s.active));
+  }, [grouped, showOnlyGroupsWithActive]);
+
+  const groupJumpOptions = useMemo(
+    () => visibleGroups.map((g) => ({ key: g.key, label: `${g.groupNumber} - ${g.groupName}` })),
+    [visibleGroups]
+  );
+
+  useEffect(() => {
+    // Keep scrolling manageable: collapsed by default.
+    // Auto-expand first group when list changes and nothing is expanded.
+    setExpandedGroups((prev) => {
+      const next = new Set<string>();
+      const visibleKeys = new Set(visibleGroups.map((g) => g.key));
+      for (const k of prev) {
+        if (visibleKeys.has(k)) next.add(k);
+      }
+      if (next.size === 0 && visibleGroups.length > 0) {
+        next.add(visibleGroups[0].key);
+      }
+      return next;
+    });
+  }, [visibleGroups]);
+
   function persist(next: ServiceItem[]) {
     setItems(next);
     saveServices(next);
@@ -77,6 +125,12 @@ export default function ServiceCatalogAdmin() {
   function onEdit(item: ServiceItem) {
     setEditing({ ...item });
     setIsAdding(false);
+    const groupKey = `${item.registrationGroupNumber || 'UNASSIGNED'}||${item.registrationGroupName || 'Unassigned Group'}`;
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      next.add(groupKey);
+      return next;
+    });
   }
 
   function onCancelEdit() {
@@ -91,6 +145,48 @@ export default function ServiceCatalogAdmin() {
 
   function onToggleActive(id: string) {
     persist(items.map(i => i.id === id ? { ...i, active: !i.active } : i));
+  }
+
+  function onSetGroupActive(groupKey: string, active: boolean) {
+    persist(
+      items.map(i => {
+        const key = `${i.registrationGroupNumber || 'UNASSIGNED'}||${i.registrationGroupName || 'Unassigned Group'}`;
+        return key === groupKey ? { ...i, active } : i;
+      })
+    );
+  }
+
+  function onToggleGroupExpanded(groupKey: string) {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) next.delete(groupKey);
+      else next.add(groupKey);
+      return next;
+    });
+  }
+
+  function onExpandAllGroups() {
+    setExpandedGroups(new Set(visibleGroups.map((g) => g.key)));
+  }
+
+  function onCollapseAllGroups() {
+    setExpandedGroups(new Set());
+  }
+
+  function onJumpToGroup(groupKey: string) {
+    if (!groupKey) return;
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      next.add(groupKey);
+      return next;
+    });
+
+    requestAnimationFrame(() => {
+      const el = groupRefs.current[groupKey];
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
   }
 
   function onSave() {
@@ -215,6 +311,47 @@ export default function ServiceCatalogAdmin() {
             </button>
           )}
         </div>
+
+        {/* Group visibility / expansion controls */}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <div className="min-w-[280px] flex-1 max-w-xl">
+            <select
+              defaultValue=""
+              onChange={(e) => {
+                onJumpToGroup(e.target.value);
+                e.currentTarget.value = '';
+              }}
+              className="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Jump to group...</option>
+              {groupJumpOptions.map((g) => (
+                <option key={g.key} value={g.key}>{g.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={onExpandAllGroups}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-100"
+          >
+            Expand All Groups
+          </button>
+          <button
+            onClick={onCollapseAllGroups}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-100"
+          >
+            Collapse All Groups
+          </button>
+          <label className="inline-flex items-center gap-2 ml-1 text-xs text-gray-700">
+            <input
+              type="checkbox"
+              checked={showOnlyGroupsWithActive}
+              onChange={(e) => setShowOnlyGroupsWithActive(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            Show only groups with active services
+          </label>
+        </div>
       </div>
 
       {/* ── Add form panel ────────────────────────────────────────── */}
@@ -225,9 +362,9 @@ export default function ServiceCatalogAdmin() {
         </div>
       )}
 
-      {/* ── Table ─────────────────────────────────────────────────── */}
-      <div className="overflow-x-auto">
-        {filtered.length === 0 ? (
+      {/* ── Grouped catalog ────────────────────────────────────────── */}
+      <div className="p-4 md:p-6 space-y-4">
+        {visibleGroups.length === 0 ? (
           <div className="py-16 text-center text-gray-400">
             <svg className="mx-auto w-10 h-10 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -236,101 +373,126 @@ export default function ServiceCatalogAdmin() {
             <p className="text-sm mt-1">Adjust your search or filter</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-y border-gray-200 text-xs text-gray-500 uppercase tracking-wide">
-                <th className="text-left px-4 py-3 font-semibold">Support Code</th>
-                <th className="text-left px-4 py-3 font-semibold">Description</th>
-                <th className="text-left px-4 py-3 font-semibold">Reg. Group</th>
-                <th className="text-left px-4 py-3 font-semibold">Category</th>
-                <th className="text-right px-4 py-3 font-semibold">VIC Rate</th>
-                <th className="text-center px-4 py-3 font-semibold">Active</th>
-                <th className="text-right px-4 py-3 font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map(item => {
-                const cat = getCat(item.category);
-                const isEditingThis = !isAdding && editing?.id === item.id;
-                return (
-                  <React.Fragment key={item.id}>
-                    <tr className={`transition-colors ${isEditingThis ? 'bg-blue-50' : 'hover:bg-gray-50'} ${!item.active ? 'opacity-50' : ''}`}>
+          visibleGroups.map(group => {
+            const activeCount = group.services.filter(s => s.active).length;
+            const isExpanded = expandedGroups.has(group.key);
+            return (
+              <section
+                key={group.key}
+                ref={(el) => { groupRefs.current[group.key] = el; }}
+                className="border border-gray-200 rounded-xl overflow-hidden bg-white"
+              >
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() => onToggleGroupExpanded(group.key)}
+                    className="text-left"
+                  >
+                    <p className="text-xs font-mono text-gray-500">Group {group.groupNumber}</p>
+                    <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                      <span>{group.groupName}</span>
+                      <span className="text-xs text-gray-400">{isExpanded ? '▼' : '▶'}</span>
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {activeCount}/{group.services.length} active services
+                    </p>
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onSetGroupActive(group.key, true)}
+                      className="px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                    >
+                      Enable Group
+                    </button>
+                    <button
+                      onClick={() => onSetGroupActive(group.key, false)}
+                      className="px-3 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100"
+                    >
+                      Disable Group
+                    </button>
+                  </div>
+                </div>
 
-                      {/* Code */}
-                      <td className="px-4 py-3">
-                        <span className="font-mono text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded select-all">
-                          {item.code}
-                        </span>
-                      </td>
-
-                      {/* Description */}
-                      <td className="px-4 py-3 text-gray-800 max-w-xs">
-                        <span className="line-clamp-2 leading-snug">{item.description}</span>
-                      </td>
-
-                      {/* Reg group */}
-                      <td className="px-4 py-3">
-                        <div className="font-mono text-xs text-gray-600">{item.registrationGroupNumber}</div>
-                        <div className="text-xs text-gray-400 truncate max-w-[140px] mt-0.5">{item.registrationGroupName}</div>
-                      </td>
-
-                      {/* Category */}
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${cat.badge}`}>
-                          {cat.label}
-                        </span>
-                      </td>
-
-                      {/* Rate */}
-                      <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                        ${item.rate.toFixed(2)}
-                      </td>
-
-                      {/* Toggle */}
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => onToggleActive(item.id)}
-                          title={item.active ? 'Click to deactivate' : 'Click to activate'}
-                          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${item.active ? 'bg-blue-600' : 'bg-gray-200'}`}
-                        >
-                          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform ${item.active ? 'translate-x-[18px]' : 'translate-x-[2px]'}`} />
-                        </button>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <button
-                          onClick={() => isEditingThis ? onCancelEdit() : onEdit(item)}
-                          className={`px-2.5 py-1 text-xs font-medium rounded mr-1 transition-colors ${
-                            isEditingThis
-                              ? 'bg-blue-600 text-white hover:bg-blue-700'
-                              : 'text-blue-700 bg-blue-50 hover:bg-blue-100'
-                          }`}
-                        >
-                          {isEditingThis ? 'Close' : 'Edit'}
-                        </button>
-                        <button
-                          onClick={() => onDelete(item.id)}
-                          className="px-2.5 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 transition-colors"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* Inline edit expanded row */}
-                    {isEditingThis && (
-                      <tr>
-                        <td colSpan={7} className="px-6 py-4 bg-blue-50 border-b border-blue-200">
-                          <EditForm editing={editing!} setEditing={setEditing} onSave={onSave} onCancel={onCancelEdit} />
-                        </td>
+                {isExpanded && <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-white border-b border-gray-200 text-xs text-gray-500 uppercase tracking-wide">
+                        <th className="text-left px-4 py-2.5 font-semibold">Support Code</th>
+                        <th className="text-left px-4 py-2.5 font-semibold">Description</th>
+                        <th className="text-left px-4 py-2.5 font-semibold">Category</th>
+                        <th className="text-right px-4 py-2.5 font-semibold">VIC Rate</th>
+                        <th className="text-center px-4 py-2.5 font-semibold">Active</th>
+                        <th className="text-right px-4 py-2.5 font-semibold">Actions</th>
                       </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {group.services.map(item => {
+                        const cat = getCat(item.category);
+                        const isEditingThis = !isAdding && editing?.id === item.id;
+                        return (
+                          <React.Fragment key={item.id}>
+                            <tr className={`transition-colors ${isEditingThis ? 'bg-blue-50' : 'hover:bg-gray-50'} ${!item.active ? 'opacity-50' : ''}`}>
+                              <td className="px-4 py-3">
+                                <span className="font-mono text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded select-all">
+                                  {item.code}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-gray-800 max-w-xl">
+                                <span className="line-clamp-2 leading-snug">{item.description}</span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${cat.badge}`}>
+                                  {cat.label}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                                ${item.rate.toFixed(2)}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <button
+                                  onClick={() => onToggleActive(item.id)}
+                                  title={item.active ? 'Click to deactivate' : 'Click to activate'}
+                                  className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${item.active ? 'bg-blue-600' : 'bg-gray-200'}`}
+                                >
+                                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform ${item.active ? 'translate-x-[18px]' : 'translate-x-[2px]'}`} />
+                                </button>
+                              </td>
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                                <button
+                                  onClick={() => isEditingThis ? onCancelEdit() : onEdit(item)}
+                                  className={`px-2.5 py-1 text-xs font-medium rounded mr-1 transition-colors ${
+                                    isEditingThis
+                                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                      : 'text-blue-700 bg-blue-50 hover:bg-blue-100'
+                                  }`}
+                                >
+                                  {isEditingThis ? 'Close' : 'Edit'}
+                                </button>
+                                <button
+                                  onClick={() => onDelete(item.id)}
+                                  className="px-2.5 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+
+                            {isEditingThis && (
+                              <tr>
+                                <td colSpan={6} className="px-6 py-4 bg-blue-50 border-b border-blue-200">
+                                  <EditForm editing={editing!} setEditing={setEditing} onSave={onSave} onCancel={onCancelEdit} />
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>}
+              </section>
+            );
+          })
         )}
       </div>
 
