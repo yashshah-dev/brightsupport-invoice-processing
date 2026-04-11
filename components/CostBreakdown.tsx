@@ -117,7 +117,7 @@ export default function CostBreakdown({
 
       {/* Line Items — Card layout for full description visibility */}
       <div className="space-y-3 mb-6">
-        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 gap-y-0 px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b-2 border-gray-300">
+        <div className="hidden md:grid grid-cols-[1fr_auto_auto_auto] gap-x-4 gap-y-0 px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b-2 border-gray-300">
           <span>Service</span>
           <span className="text-right w-20">Qty</span>
           <span className="text-right w-20">Rate</span>
@@ -145,7 +145,7 @@ export default function CostBreakdown({
           return (
             <div
               key={index}
-              className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 items-start px-3 py-3 rounded-lg border border-gray-100 hover:border-gray-200 bg-white hover:bg-gray-50 transition-colors"
+              className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-x-4 gap-y-2 items-start px-3 py-3 rounded-lg border border-gray-100 hover:border-gray-200 bg-white hover:bg-gray-50 transition-colors"
             >
               {/* Service info - full width first column */}
               <div className="min-w-0">
@@ -170,7 +170,8 @@ export default function CostBreakdown({
               </div>
 
               {/* Qty */}
-              <div className="w-20">
+              <div className="w-full md:w-20">
+                <p className="md:hidden text-[11px] uppercase tracking-wide text-gray-500 mb-1">Qty</p>
                 <input
                   key={`qty-${item.serviceCode}-${item.unitPrice}-${item.dates || ''}-${item.quantity}`}
                   type="text"
@@ -188,12 +189,14 @@ export default function CostBreakdown({
               </div>
 
               {/* Rate - read only */}
-              <div className="w-20 text-sm text-right text-gray-600 py-1">
+              <div className="w-full md:w-20 text-sm md:text-right text-gray-600 py-1">
+                <p className="md:hidden text-[11px] uppercase tracking-wide text-gray-500 mb-1">Rate</p>
                 {formatCurrency(item.unitPrice)}
               </div>
 
               {/* Amount */}
-              <div className="w-24 text-sm text-right font-semibold text-gray-900 py-1">
+              <div className="w-full md:w-24 text-sm md:text-right font-semibold text-gray-900 py-1">
+                <p className="md:hidden text-[11px] uppercase tracking-wide text-gray-500 mb-1">Amount</p>
                 {formatCurrency(item.total)}
               </div>
             </div>

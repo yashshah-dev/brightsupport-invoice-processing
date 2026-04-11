@@ -263,24 +263,24 @@ export default function InvoiceGenerator() {
     formData?.clientInfo.ndisNumber;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-4 sm:py-8 px-3 sm:px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800 mb-2">
             BrightSupport Invoice Generator
           </h1>
-          <p className="text-gray-600">
+          <p className="text-sm sm:text-base text-gray-600">
             NDIS Service Invoice Management System
           </p>
         </div>
 
         {/* Tab Navigation */}
         <div className="flex justify-center mb-6">
-          <div className="bg-white rounded-lg shadow-md p-1 inline-flex">
+          <div className="bg-white rounded-lg shadow-md p-1 w-full max-w-3xl grid grid-cols-1 sm:grid-cols-3 gap-1">
             <button
               onClick={() => setActiveTab('form')}
-              className={`px-6 py-2 rounded-md font-medium transition-all ${activeTab === 'form'
+              className={`px-3 sm:px-6 py-2 rounded-md font-medium text-sm sm:text-base transition-all ${activeTab === 'form'
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-600 hover:bg-gray-100'
                 }`}
@@ -290,7 +290,7 @@ export default function InvoiceGenerator() {
             <button
               onClick={() => setActiveTab('preview')}
               disabled={!canGenerate}
-              className={`px-6 py-2 rounded-md font-medium transition-all ${activeTab === 'preview'
+              className={`px-3 sm:px-6 py-2 rounded-md font-medium text-sm sm:text-base transition-all ${activeTab === 'preview'
                   ? 'bg-blue-600 text-white'
                   : canGenerate
                     ? 'text-gray-600 hover:bg-gray-100'
@@ -301,7 +301,7 @@ export default function InvoiceGenerator() {
             </button>
             <button
               onClick={() => setActiveTab('catalog')}
-              className={`px-6 py-2 rounded-md font-medium transition-all ${activeTab === 'catalog'
+              className={`px-3 sm:px-6 py-2 rounded-md font-medium text-sm sm:text-base transition-all ${activeTab === 'catalog'
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-600 hover:bg-gray-100'
                 }`}

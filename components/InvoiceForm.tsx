@@ -839,7 +839,7 @@ export default function InvoiceForm({
                         updateGroupTemplateService(idx, 'sunday', defaults.sunday);
                         updateGroupTemplateService(idx, 'publicHoliday', defaults.publicHoliday);
                       }}
-                      className="min-w-[320px] px-2 py-1 text-xs border rounded bg-white"
+                      className="w-full md:min-w-[320px] md:w-auto px-2 py-1 text-xs border rounded bg-white"
                     >
                       {registrationGroups.map((group) => (
                         <option key={group.number} value={group.number}>
@@ -881,7 +881,7 @@ export default function InvoiceForm({
                             <select
                               value={row.serviceIds[bucket] || ''}
                               onChange={(e) => updateGroupTemplateService(idx, bucket, e.target.value)}
-                              className="px-2 py-1 text-xs border rounded bg-white"
+                              className="w-full px-2 py-1 text-xs border rounded bg-white"
                             >
                               <option value="">Select service...</option>
                               {optionsForBucket.map((option) => (
@@ -1034,7 +1034,7 @@ export default function InvoiceForm({
                                   <select
                                     value={row.serviceId}
                                     onChange={(e) => updateServiceAllocationRow(iso, idx, 'serviceId', e.target.value)}
-                                    className="min-w-[220px] px-2 py-1 text-xs border rounded bg-white"
+                                    className="w-full md:min-w-[220px] md:w-auto px-2 py-1 text-xs border rounded bg-white"
                                   >
                                     {serviceOptions.map((option) => (
                                       <option key={option.id} value={option.id}>

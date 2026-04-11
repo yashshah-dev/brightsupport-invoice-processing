@@ -43,11 +43,11 @@ export default function InvoicePreview({ invoiceData, dayCategories }: InvoicePr
   const datesByCategory = groupDatesByCategory(dayCategories);
   
   return (
-    <div className="bg-white rounded-lg shadow-md p-8" id="invoice-preview">
+    <div className="bg-white rounded-lg shadow-md p-4 sm:p-8" id="invoice-preview">
       {/* Header */}
-      <div className="flex justify-between items-start mb-8 pb-6 border-b-2 border-gray-300">
+      <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-8 pb-6 border-b-2 border-gray-300">
         <div>
-          <h1 className="text-4xl font-bold text-blue-600 mb-2">{COMPANY_INFO.name}</h1>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-blue-600 mb-2">{COMPANY_INFO.name}</h1>
           <div className="text-sm text-gray-600 space-y-1">
             <p className="font-semibold">{COMPANY_INFO.abn}</p>
             <p>{COMPANY_INFO.address}</p>
@@ -65,16 +65,16 @@ export default function InvoicePreview({ invoiceData, dayCategories }: InvoicePr
         </div>
         
         {/* Logo */}
-        <div className="flex-shrink-0 mx-8">
+        <div className="flex-shrink-0 mx-0 lg:mx-8 self-center">
           <img 
             src={asset('/logo/logo-brightsupport.jpeg')} 
             alt="Bright Support Logo" 
-            className="h-32 w-auto object-contain"
+            className="h-20 sm:h-24 lg:h-32 w-auto object-contain"
           />
         </div>
         
-        <div className="text-right">
-          <h2 className="text-3xl font-bold text-gray-800 mb-3">INVOICE</h2>
+        <div className="text-left lg:text-right">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-3">INVOICE</h2>
           <div className="text-sm space-y-1">
             <p className="font-semibold">Invoice #: {invoiceData.invoiceNumber}</p>
             <p>Date: {formatInvoiceDate(invoiceData.invoiceDate)}</p>
@@ -111,8 +111,8 @@ export default function InvoicePreview({ invoiceData, dayCategories }: InvoicePr
       </div>
 
       {/* Line Items */}
-      <div className="mb-8">
-        <table className="w-full text-sm">
+      <div className="mb-8 overflow-x-auto">
+        <table className="w-full min-w-[700px] text-sm">
           <thead>
             <tr className="bg-gray-100 border-b-2 border-gray-400">
               <th className="text-left py-3 px-3 font-bold text-gray-800">Item Code</th>
