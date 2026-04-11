@@ -454,7 +454,7 @@ export default function InvoiceForm({
 
   const serviceMatchesBucket = (serviceCategory: string, bucket: AllocationCategory) => {
     if (bucket === 'weekday') {
-      return ['weekday', 'weekday_evening', 'weekday_night'].includes(serviceCategory);
+      return serviceCategory === 'weekday';
     }
     return serviceCategory === bucket;
   };
