@@ -217,6 +217,10 @@ export default function InvoiceGenerator() {
 
   const handleValidateInvoice = async () => {
     if (!invoiceData) return;
+    if (isStale) {
+      alert('Changes detected. Please click Recalculate Invoice before validation.');
+      return;
+    }
 
     const calcResult = validateInvoice(invoiceData);
     const publishedCatalog = await loadPublishedServices();
@@ -289,10 +293,10 @@ export default function InvoiceGenerator() {
             </button>
             <button
               onClick={() => setActiveTab('preview')}
-              disabled={!canGenerate}
+              disabled={!canGenerate || isStale}
               className={`px-3 sm:px-6 py-2 rounded-md font-medium text-sm sm:text-base transition-all ${activeTab === 'preview'
                   ? 'bg-blue-600 text-white'
-                  : canGenerate
+                  : canGenerate && !isStale
                     ? 'text-gray-600 hover:bg-gray-100'
                     : 'text-gray-400 cursor-not-allowed'
                 }`}
@@ -366,13 +370,23 @@ export default function InvoiceGenerator() {
                   <div className="mb-4">
                     <button
                       onClick={handleValidateInvoice}
-                      className="w-full px-4 py-3 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700 transition-colors flex items-center justify-center gap-2"
+                      disabled={isStale}
+                      className={`w-full px-4 py-3 font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 ${
+                        isStale
+                          ? 'bg-amber-300 text-white cursor-not-allowed'
+                          : 'bg-amber-600 text-white hover:bg-amber-700'
+                      }`}
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       Validate All Calculations
                     </button>
+                    {isStale && (
+                      <p className="text-xs text-amber-700 mt-2">
+                        Recalculate is required before validation and download.
+                      </p>
+                    )}
                   </div>
 
                   {validationResult && (
@@ -516,10 +530,18 @@ export default function InvoiceGenerator() {
                 )}
 
                 {/* Validation Warning - If not validated yet */}
-                {!validationResult && (
+                {!validationResult && !isStale && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                     <p className="text-amber-800 text-sm">
                       <span className="font-semibold">⚠️ Validation Required:</span> Click "Validate All Calculations" above before downloading to ensure all hours, km, and totals are correct.
+                    </p>
+                  </div>
+                )}
+
+                {isStale && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <p className="text-amber-800 text-sm">
+                      <span className="font-semibold">Recalculate Required:</span> You changed data after last calculation. Click "Recalculate Invoice" in Cost Breakdown before preview, validation, or download.
                     </p>
                   </div>
                 )}
