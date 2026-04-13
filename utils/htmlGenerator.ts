@@ -327,6 +327,7 @@ export async function generateHTML(invoiceData: InvoiceData): Promise<void> {
                 <div>${COMPANY_INFO.address}</div>
                 <div>T: ${COMPANY_INFO.phone}</div>
                 <div>${COMPANY_INFO.email}</div>
+                <div>${COMPANY_INFO.abn}</div>
             </div>
 
             <div class="logo">

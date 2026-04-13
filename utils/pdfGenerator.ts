@@ -59,6 +59,7 @@ export async function generatePDF(invoiceData: InvoiceData): Promise<void> {
   doc.text(COMPANY_INFO.address, 15, headerStartY + 14);
   doc.text(`T: ${COMPANY_INFO.phone}`, 15, headerStartY + 18);
   doc.text(COMPANY_INFO.email, 15, headerStartY + 22);
+  doc.text(COMPANY_INFO.abn, 15, headerStartY + 26);
 
   // CENTER COLUMN: Logo
   let logoLoaded = false;
