@@ -129,9 +129,7 @@ export default function InvoiceGenerator() {
         formData.travelKmPerDay,
         dayCategories,
         formData.perDaySchedules,
-        formData.perDayServiceAllocations,
-        formData.selectedTravelServiceId,
-        formData.travelEntries
+        formData.perDayServiceAllocations
       ).then((invoice) => {
         setInvoiceData(applyLineItemOverrides(invoice));
         setIsStale(false);
@@ -166,9 +164,7 @@ export default function InvoiceGenerator() {
       formData.travelKmPerDay,
       dayCategories,
       formData.perDaySchedules,
-      formData.perDayServiceAllocations,
-      formData.selectedTravelServiceId,
-      formData.travelEntries
+      formData.perDayServiceAllocations
     ).then((invoice) => {
       // Set raw calculated invoice (without manual overrides)
       setInvoiceData(invoice);
