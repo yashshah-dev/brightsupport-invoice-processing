@@ -26,8 +26,7 @@ export default function InvoiceGenerator() {
   const [dayCategories, setDayCategories] = useState<DayCategory[]>([]);
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
   const [activeTab, setActiveTab] = useState<'form' | 'preview' | 'catalog'>('form');
-  const [manualHolidays, setManualHolidays] = useState<Array<{ date: Date; name: string }>>([]);
-  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [manualHolidays, setManualHolidays] = useState<Array<{ date: Date; name: string }>>([]);  const [invoiceNumber, setInvoiceNumber] = useState<string>(() => generateInvoiceNumber());  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [descriptionOverrides, setDescriptionOverrides] = useState<Record<string, string>>({});
   const [quantityOverrides, setQuantityOverrides] = useState<Record<string, number>>({});
   const [supportCodeOverrides, setSupportCodeOverrides] = useState<Record<string, string>>({});
@@ -120,7 +119,7 @@ export default function InvoiceGenerator() {
       dayCategories.length > 0
     ) {
       buildInvoiceData(
-        generateInvoiceNumber(),
+        invoiceNumber.trim() || generateInvoiceNumber(),
         formData.invoiceDate,
         formData.startDate,
         formData.endDate,
@@ -155,7 +154,7 @@ export default function InvoiceGenerator() {
     setSupportCodeOverrides({});
 
     buildInvoiceData(
-      generateInvoiceNumber(),
+      invoiceNumber.trim() || generateInvoiceNumber(),
       formData.invoiceDate,
       formData.startDate,
       formData.endDate,
@@ -328,19 +327,50 @@ export default function InvoiceGenerator() {
               manualHolidays={manualHolidays}
             />
 
-            {/* Calculate Invoice Button */}
-            {!invoiceData && canGenerate && dayCategories.length > 0 && (
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <button
-                  type="button"
-                  onClick={handleRecalculate}
-                  className="w-full px-4 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                  Calculate Invoice
-                </button>
+            {/* Invoice Number + Calculate Invoice Button */}
+            {canGenerate && dayCategories.length > 0 && (
+              <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Number</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={invoiceNumber}
+                      onChange={(e) => {
+                        setInvoiceNumber(e.target.value);
+                        if (invoiceData) setIsStale(true);
+                      }}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="e.g. INV-2026-0414-0001"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = generateInvoiceNumber();
+                        setInvoiceNumber(next);
+                        if (invoiceData) setIsStale(true);
+                      }}
+                      className="px-3 py-2 text-xs bg-gray-100 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-200 whitespace-nowrap"
+                      title="Generate a new invoice number"
+                    >
+                      Regenerate
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Auto-generated. You can edit it before calculating.</p>
+                </div>
+
+                {!invoiceData && (
+                  <button
+                    type="button"
+                    onClick={handleRecalculate}
+                    className="w-full px-4 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    Calculate Invoice
+                  </button>
+                )}
               </div>
             )}
 

@@ -92,27 +92,11 @@ export function countDaysByCategory(dayCategories: DayCategory[]) {
 }
 
 /**
- * Generate unique invoice number based on industry standard format
- * Format: INV-YYYY-MMDD-XXXX where XXXX is a sequential counter
- * Counter is stored in localStorage and increments for each new invoice
+ * Generate invoice number based on current date and time.
+ * Format: INV-YYYY-MMDD-HHmmss  — no localStorage, fresh on every call.
  */
 export function generateInvoiceNumber(date: Date = new Date()): string {
-  const datePrefix = format(date, 'yyyy-MMdd');
-  const storageKey = `invoice_counter_${datePrefix}`;
-  
-  // Get the current counter for today's date
-  let counter = 1;
-  if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem(storageKey);
-    if (stored) {
-      counter = parseInt(stored, 10) + 1;
-    }
-    localStorage.setItem(storageKey, counter.toString());
-  }
-  
-  // Format: INV-2025-1126-0001
-  const sequenceNumber = counter.toString().padStart(4, '0');
-  return `INV-${datePrefix}-${sequenceNumber}`;
+  return `INV-${format(date, 'yyyy-MMdd-HHmmss')}`;
 }
 
 /**

@@ -125,49 +125,69 @@ export async function generatePDF(invoiceData: InvoiceData): Promise<void> {
   doc.line(15, currentY, pageWidth - 15, currentY);
 
   // ============================================
-  // BILL TO SECTION
+  // CLIENT + BILL TO — two-column layout
   // ============================================
   currentY += 4;
-  
-  doc.setFontSize(10);
-  doc.setTextColor(30, 64, 175);
-  doc.setFont('helvetica', 'bold');
-  doc.text('BILL TO', 15, currentY);
-  
-  currentY += 6;
+
+  // Helper: format NDIS number as XXX XXX XXX (groups of 3)
+  const formatNDIS = (raw: string) => {
+    const digits = raw.replace(/\D/g, '');
+    return digits.replace(/(\d{3})(?=\d)/g, '$1 ').trim();
+  };
+
+  const colLeft = 15;
+  const colRight = pageWidth / 2 + 5;
+  const sectionTopY = currentY;
+
+  // ---- LEFT: CLIENT ----
+  let leftY = sectionTopY;
   doc.setFontSize(11);
   doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'bold');
-  doc.text(invoiceData.clientInfo.name, 15, currentY);
-  
-  currentY += 5;
+  doc.text(invoiceData.clientInfo.name, colLeft, leftY);
+
+  leftY += 5;
   doc.setFontSize(9);
   doc.setTextColor(60, 60, 60);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`NDIS Number: ${invoiceData.clientInfo.ndisNumber}`, 15, currentY);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`NDIS Number: ${formatNDIS(invoiceData.clientInfo.ndisNumber)}`, colLeft, leftY);
 
   if (invoiceData.clientInfo.dateOfBirth) {
-    currentY += 4;
-    doc.text(`DOB: ${formatInvoiceDate(new Date(invoiceData.clientInfo.dateOfBirth))}`, 15, currentY);
+    leftY += 4;
+    doc.text(`DOB: ${formatInvoiceDate(new Date(invoiceData.clientInfo.dateOfBirth))}`, colLeft, leftY);
   }
 
   if (invoiceData.clientInfo.address) {
-    currentY += 4;
-    doc.text(invoiceData.clientInfo.address, 15, currentY);
+    leftY += 4;
+    doc.text(invoiceData.clientInfo.address, colLeft, leftY);
   }
 
-  if (invoiceData.clientInfo.planManager) {
-    currentY += 4;
+  // ---- RIGHT: BILL TO ----
+  let rightY = sectionTopY;
+  if (invoiceData.clientInfo.planManager || invoiceData.clientInfo.planManagerEmail) {
+    doc.setFontSize(10);
+    doc.setTextColor(30, 64, 175);
     doc.setFont('helvetica', 'bold');
-    doc.text('Plan Manager: ', 15, currentY);
-    doc.setFont('helvetica', 'normal');
-    doc.text(invoiceData.clientInfo.planManager, 45, currentY);
+    doc.text('BILL TO', colRight, rightY);
 
+    rightY += 6;
+    if (invoiceData.clientInfo.planManager) {
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'bold');
+      doc.text(invoiceData.clientInfo.planManager, colRight, rightY);
+      rightY += 5;
+    }
     if (invoiceData.clientInfo.planManagerEmail) {
-      currentY += 4;
-      doc.text(invoiceData.clientInfo.planManagerEmail, 15, currentY);
+      doc.setFontSize(9);
+      doc.setTextColor(60, 60, 60);
+      doc.setFont('helvetica', 'normal');
+      doc.text(invoiceData.clientInfo.planManagerEmail, colRight, rightY);
+      rightY += 4;
     }
   }
+
+  currentY = Math.max(leftY, rightY);
 
   // ============================================
   // SERVICE PERIOD SECTION
