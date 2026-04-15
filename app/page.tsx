@@ -228,13 +228,31 @@ export default function InvoiceGenerator() {
     });
   };
 
-  const handleExportPDF = () => {
+  const rotateInvoiceNumberAfterDownload = () => {
+    if (!invoiceData) return;
+
+    let next = generateInvoiceNumber();
+    let offsetSeconds = 1;
+
+    // Ensure the next invoice number is different even if download happens within the same second.
+    while (next === invoiceData.invoiceNumber && offsetSeconds <= 5) {
+      next = generateInvoiceNumber(new Date(Date.now() + offsetSeconds * 1000));
+      offsetSeconds += 1;
+    }
+
+    setInvoiceNumber(next);
+    setIsStale(true);
+    setValidationResult(null);
+  };
+
+  const handleExportPDF = async () => {
     if (!invoiceData) return;
     if (isStale || !validationResult?.isValid) {
       alert('Please run validation and fix all errors before downloading.');
       return;
     }
-    generatePDF(invoiceData);
+    await generatePDF(invoiceData);
+    rotateInvoiceNumberAfterDownload();
   };
 
   const handleExportWord = async () => {
@@ -244,15 +262,17 @@ export default function InvoiceGenerator() {
       return;
     }
     await generateWord(invoiceData);
+    rotateInvoiceNumberAfterDownload();
   };
 
-  const handleExportHTML = () => {
+  const handleExportHTML = async () => {
     if (!invoiceData) return;
     if (isStale || !validationResult?.isValid) {
       alert('Please run validation and fix all errors before downloading.');
       return;
     }
-    generateHTML(invoiceData);
+    await generateHTML(invoiceData);
+    rotateInvoiceNumberAfterDownload();
   };
 
   const canGenerate =
