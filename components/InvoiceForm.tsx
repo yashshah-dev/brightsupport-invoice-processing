@@ -1089,7 +1089,6 @@ export default function InvoiceForm({
                 })
                 .map((d) => {
                 const iso = dateKey(d);
-                const travelOverride = formData.perDaySchedules?.[iso]?.travelKm;
                 const allocations = formData.perDayServiceAllocations?.[iso] || [];
                 const visibleAllocations = allocations.filter(a => !travelOptions.some(t => t.id === a.serviceId));
                 const travelAllocations = allocations.filter(a => travelOptions.some(t => t.id === a.serviceId));
