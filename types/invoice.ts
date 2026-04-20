@@ -39,7 +39,6 @@ export interface DaySchedule {
   morning: number;
   evening: number;
   night: number;
-  travelKm?: number;
 }
 
 export interface DailyServiceAllocation {
@@ -58,7 +57,6 @@ export interface InvoiceData {
   perDaySchedules?: Record<string, DaySchedule>;
   // Map of ISO date string -> multiple service allocations for that day
   perDayServiceAllocations?: Record<string, DailyServiceAllocation[]>;
-  travelKmPerDay: number;
   excludedDates: Date[];
   dayCategories: DayCategory[];
   lineItems: InvoiceLineItem[];

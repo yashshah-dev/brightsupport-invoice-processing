@@ -125,7 +125,6 @@ export default function InvoiceGenerator() {
         formData.endDate,
         formData.clientInfo,
         formData.defaultSchedule,
-        formData.travelKmPerDay,
         dayCategories,
         formData.perDaySchedules,
         formData.perDayServiceAllocations
@@ -160,7 +159,6 @@ export default function InvoiceGenerator() {
       formData.endDate,
       formData.clientInfo,
       formData.defaultSchedule,
-      formData.travelKmPerDay,
       dayCategories,
       formData.perDaySchedules,
       formData.perDayServiceAllocations

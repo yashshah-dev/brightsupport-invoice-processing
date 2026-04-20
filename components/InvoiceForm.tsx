@@ -8,15 +8,15 @@ import { DEFAULT_CLIENT_INFO } from '@/constants/invoice';
 import { loadServices, ServiceItem } from '@/utils/services';
 import { format } from 'date-fns';
 import DayExclusionCalendar from '@/components/DayExclusionCalendar';
+import SearchableSelect from '@/components/SearchableSelect';
+
+type AllocationCategory = 'weekday' | 'weekday_evening' | 'weekday_night' | 'weekday_night_sleepover' | 'saturday' | 'sunday' | 'publicHoliday';
 
 type GroupHoursTemplate = {
   registrationGroupNumber: string;
   serviceIds: Record<AllocationCategory, string>;
-  travelServiceId: string;
-  hours: number;
+  hours: Record<AllocationCategory, number>;
 };
-
-type AllocationCategory = 'weekday' | 'saturday' | 'sunday' | 'publicHoliday';
 
 // Plain text box. Only commits to parent on blur or Enter — never on keystroke.
 function HoursInput({
@@ -75,11 +75,33 @@ export interface FormData {
   defaultSchedule: DaySchedule; // Renamed from hoursPerDay
   perDaySchedules?: Record<string, DaySchedule>; // Renamed from perDayHours
   perDayServiceAllocations?: Record<string, DailyServiceAllocation[]>;
-  travelKmPerDay: number;
+  defaultTravelKm: number;
+  defaultTravelServiceId?: string;
   clientInfo: ClientInfo;
 }
 
 const STORAGE_KEY = 'invoice_form_data_v2'; // Bump version
+const TEMPLATE_STORAGE_KEY = 'invoice_group_template_v1';
+
+function loadSavedGroupTemplate(): GroupHoursTemplate[] | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const saved = localStorage.getItem(TEMPLATE_STORAGE_KEY);
+    if (!saved) return null;
+    return JSON.parse(saved);
+  } catch {
+    return null;
+  }
+}
+
+function saveGroupTemplate(template: GroupHoursTemplate[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(template));
+  } catch (error) {
+    console.warn('Failed to save group template:', error);
+  }
+}
 
 // Load saved form data from localStorage
 function loadSavedFormData(): Partial<FormData> | null {
@@ -133,7 +155,8 @@ export default function InvoiceForm({
     defaultSchedule: { morning: 0, evening: 0, night: 0 },
     perDaySchedules: {},
     perDayServiceAllocations: {},
-    travelKmPerDay: 27.5,
+    defaultTravelKm: 27.5,
+    defaultTravelServiceId: '',
     clientInfo: {
       name: '',
       ndisNumber: '',
@@ -150,6 +173,14 @@ export default function InvoiceForm({
     if (!isInitialized) return;
     saveFormData(formData);
   }, [formData, isInitialized]);
+
+  // Auto-save group template whenever it changes
+  useEffect(() => {
+    if (!isInitialized) return;
+    if (groupHoursTemplate.length > 0) {
+      saveGroupTemplate(groupHoursTemplate);
+    }
+  }, [groupHoursTemplate, isInitialized]);
 
   // Initialize from localStorage after mount to avoid SSR/client hydration mismatch
   useEffect(() => {
@@ -205,6 +236,13 @@ export default function InvoiceForm({
 
   useEffect(() => {
     if (groupHoursTemplate.length === 0 && registrationGroups.length > 0) {
+      // Try restoring from localStorage first
+      const savedTemplate = loadSavedGroupTemplate();
+      if (savedTemplate && savedTemplate.length > 0) {
+        setGroupHoursTemplate(savedTemplate);
+        return;
+      }
+      // Otherwise initialize with defaults
       const firstGroup = registrationGroups[0].number;
       const defaults = buildDefaultServiceSelection(firstGroup);
       setGroupHoursTemplate([
@@ -212,12 +250,22 @@ export default function InvoiceForm({
           registrationGroupNumber: firstGroup,
           serviceIds: {
             weekday: defaults.weekday,
+            weekday_evening: defaults.weekday_evening,
+            weekday_night: defaults.weekday_night,
+            weekday_night_sleepover: defaults.weekday_night_sleepover,
             saturday: defaults.saturday,
             sunday: defaults.sunday,
             publicHoliday: defaults.publicHoliday,
           },
-          travelServiceId: defaults.travel,
-          hours: 8,
+          hours: {
+            weekday: 8,
+            weekday_evening: 0,
+            weekday_night: 0,
+            weekday_night_sleepover: 0,
+            saturday: 8,
+            sunday: 8,
+            publicHoliday: 8,
+          },
         },
       ]);
     }
@@ -290,7 +338,8 @@ export default function InvoiceForm({
         defaultSchedule: { morning: 0, evening: 0, night: 0 },
         perDaySchedules: {},
         perDayServiceAllocations: {},
-        travelKmPerDay: 27.5,
+        defaultTravelKm: 27.5,
+        defaultTravelServiceId: '',
         clientInfo: {
           name: '',
           ndisNumber: '',
@@ -454,10 +503,11 @@ export default function InvoiceForm({
   };
 
   const serviceMatchesBucket = (serviceCategory: string, bucket: AllocationCategory) => {
-    if (bucket === 'weekday') {
-      return serviceCategory === 'weekday';
-    }
-    return serviceCategory === bucket;
+    if (bucket === 'weekday') return serviceCategory === 'weekday';
+    if (bucket === 'weekday_evening') return serviceCategory === 'weekday_evening';
+    if (bucket === 'weekday_night' || bucket === 'weekday_night_sleepover') return serviceCategory === 'weekday_night';
+    if (bucket === 'saturday' || bucket === 'sunday' || bucket === 'publicHoliday') return serviceCategory === bucket;
+    return false;
   };
 
   const findFirstServiceForGroupAndBucket = (
@@ -467,22 +517,29 @@ export default function InvoiceForm({
     const candidates = serviceOptions.filter(
       (s) => s.registrationGroupNumber === registrationGroupNumber && serviceMatchesBucket(s.category, bucket)
     );
+    if (bucket === 'weekday') {
+      const daytimeMatch = candidates.find((s) => s.description.toLowerCase().includes('weekday daytime'));
+      return daytimeMatch || candidates[0] || null;
+    }
+    if (bucket === 'weekday_night_sleepover') {
+      const sleepoverMatch = candidates.find((s) => s.description.toLowerCase().includes('sleepover'));
+      return sleepoverMatch || null; /* Only pick if strictly sleepover */
+    }
+    if (bucket === 'weekday_night') {
+      const nonSleepoverMatch = candidates.find((s) => !s.description.toLowerCase().includes('sleepover'));
+      return nonSleepoverMatch || candidates[0] || null;
+    }
     return candidates[0] || null;
   };
 
-  const findFirstTravelServiceForGroup = (registrationGroupNumber: string) => {
-    const candidates = travelOptions.filter(
-      (s) => s.registrationGroupNumber === registrationGroupNumber
-    );
-    return candidates[0] || travelOptions[0] || null;
-  };
-
-  const buildDefaultServiceSelection = (registrationGroupNumber: string): Record<AllocationCategory, string> & { travel: string } => ({
+  const buildDefaultServiceSelection = (registrationGroupNumber: string): Record<AllocationCategory, string> => ({
     weekday: findFirstServiceForGroupAndBucket(registrationGroupNumber, 'weekday')?.id || '',
+    weekday_evening: findFirstServiceForGroupAndBucket(registrationGroupNumber, 'weekday_evening')?.id || '',
+    weekday_night: findFirstServiceForGroupAndBucket(registrationGroupNumber, 'weekday_night')?.id || '',
+    weekday_night_sleepover: findFirstServiceForGroupAndBucket(registrationGroupNumber, 'weekday_night_sleepover')?.id || '',
     saturday: findFirstServiceForGroupAndBucket(registrationGroupNumber, 'saturday')?.id || '',
     sunday: findFirstServiceForGroupAndBucket(registrationGroupNumber, 'sunday')?.id || '',
     publicHoliday: findFirstServiceForGroupAndBucket(registrationGroupNumber, 'publicHoliday')?.id || '',
-    travel: findFirstTravelServiceForGroup(registrationGroupNumber)?.id || '',
   });
 
   const addGroupTemplateRow = () => {
@@ -495,27 +552,56 @@ export default function InvoiceForm({
         registrationGroupNumber: firstGroup,
         serviceIds: {
           weekday: defaults.weekday,
+          weekday_evening: defaults.weekday_evening,
+          weekday_night: defaults.weekday_night,
+          weekday_night_sleepover: defaults.weekday_night_sleepover,
           saturday: defaults.saturday,
           sunday: defaults.sunday,
           publicHoliday: defaults.publicHoliday,
         },
-        travelServiceId: defaults.travel,
-        hours: 1,
+        hours: {
+          weekday: 1,
+          weekday_evening: 0,
+          weekday_night: 0,
+          weekday_night_sleepover: 0,
+          saturday: 1,
+          sunday: 1,
+          publicHoliday: 1,
+        },
       },
     ]);
   };
 
   const updateGroupTemplateRow = (
     index: number,
-    field: 'registrationGroupNumber' | 'hours',
-    value: string | number
+    field: 'registrationGroupNumber',
+    value: string
   ) => {
     setGroupHoursTemplate((prev) => {
       const next = [...prev];
       if (!next[index]) return prev;
       next[index] = {
         ...next[index],
-        [field]: field === 'hours' ? Number(value) : value,
+        [field]: value,
+      };
+      return next;
+    });
+  };
+
+  const updateGroupTemplateHours = (
+    index: number,
+    bucket: AllocationCategory,
+    value: number
+  ) => {
+    setGroupHoursTemplate((prev) => {
+      const next = [...prev];
+      if (!next[index]) return prev;
+      next[index] = {
+        ...next[index],
+        hours: {
+          ...next[index].hours,
+          [bucket]: value,
+        },
       };
       return next;
     });
@@ -540,17 +626,7 @@ export default function InvoiceForm({
     });
   };
 
-  const updateGroupTemplateTravel = (index: number, travelServiceId: string) => {
-    setGroupHoursTemplate((prev) => {
-      const next = [...prev];
-      if (!next[index]) return prev;
-      next[index] = {
-        ...next[index],
-        travelServiceId,
-      };
-      return next;
-    });
-  };
+
 
   const removeGroupTemplateRow = (index: number) => {
     setGroupHoursTemplate((prev) => {
@@ -563,7 +639,7 @@ export default function InvoiceForm({
   const autoPopulateByDayType = () => {
     if (!formData.startDate || !formData.endDate) return;
     const validTemplateRows = groupHoursTemplate.filter(
-      (row) => row.registrationGroupNumber && row.hours > 0
+      (row) => row.registrationGroupNumber && Object.values(row.hours).some(h => h > 0)
     );
     if (validTemplateRows.length === 0) {
       alert('Add at least one row with group, category service code(s), and hours greater than 0.');
@@ -582,24 +658,35 @@ export default function InvoiceForm({
     for (const date of dates) {
       const iso = dateKey(date);
       const dayType = getDayType(date);
-      const bucket = dayType as AllocationCategory;
+      // Determine which buckets apply to this day.
+      const applicableBuckets: AllocationCategory[] = 
+        dayType === 'weekday' 
+          ? ['weekday', 'weekday_evening', 'weekday_night', 'weekday_night_sleepover']
+          : [dayType as AllocationCategory];
 
       const allocationsForDay: DailyServiceAllocation[] = [];
       for (const row of validTemplateRows) {
-        const selectedServiceId = row.serviceIds[bucket];
-        const service = serviceOptions.find((s) => s.id === selectedServiceId);
-        if (!service) {
-          missingServices.push(`${row.registrationGroupNumber} (${bucket})`);
-          continue;
-        }
-        allocationsForDay.push({ serviceId: service.id, hours: row.hours });
-        
-        // Add travel service allocation if available (using 1 unit to trigger travel cost calculation)
-        if (row.travelServiceId) {
-          const travelService = travelOptions.find((s) => s.id === row.travelServiceId);
-          if (travelService) {
-            allocationsForDay.push({ serviceId: travelService.id, hours: 0 });
+        for (const bucket of applicableBuckets) {
+          const hours = row.hours[bucket];
+          if (!hours || hours <= 0) continue; // Skip if 0 hours allocated
+
+          const selectedServiceId = row.serviceIds[bucket];
+          const service = serviceOptions.find((s) => s.id === selectedServiceId);
+          if (!service) {
+            missingServices.push(`${row.registrationGroupNumber} (${bucket})`);
+            continue;
           }
+          allocationsForDay.push({ serviceId: service.id, hours });
+        }
+      }
+
+      // Add default global travel row if configured
+      if (formData.defaultTravelKm > 0) {
+        const fallbackGroup = groupHoursTemplate[0]?.registrationGroupNumber;
+        const fallbackTravelService = travelOptions.find(t => t.registrationGroupNumber === fallbackGroup) || travelOptions[0];
+        const globalTravelService = travelOptions.find((s) => s.id === formData.defaultTravelServiceId) || fallbackTravelService;
+        if (globalTravelService) {
+          allocationsForDay.push({ serviceId: globalTravelService.id, hours: formData.defaultTravelKm });
         }
       }
 
@@ -639,22 +726,6 @@ export default function InvoiceForm({
     acc[option.id] = `${option.code} - ${option.description}`;
     return acc;
   }, {} as Record<string, string>);
-
-  const updateDayTravelKm = (isoDate: string, value?: number) => {
-    const next = { ...(formData.perDaySchedules || {}) };
-    const current = next[isoDate] || { morning: 0, evening: 0, night: 0 };
-    if (value === undefined) {
-      delete current.travelKm;
-    } else {
-      current.travelKm = value;
-    }
-    if (!current.travelKm && current.morning === 0 && current.evening === 0 && current.night === 0) {
-      delete next[isoDate];
-    } else {
-      next[isoDate] = current;
-    }
-    updateFormData({ perDaySchedules: next });
-  };
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 space-y-6">
@@ -836,108 +907,149 @@ export default function InvoiceForm({
                 </div>
               </div>
 
-              <div className="space-y-2">
-                {groupHoursTemplate.map((row, idx) => (
-                  <div key={`group-template-${idx}`} className="rounded border border-indigo-100 bg-white p-2 space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                    <select
-                      value={row.registrationGroupNumber}
-                      onChange={(e) => {
-                        const nextGroup = e.target.value;
-                        updateGroupTemplateRow(idx, 'registrationGroupNumber', nextGroup);
-                        const defaults = buildDefaultServiceSelection(nextGroup);
-                        updateGroupTemplateService(idx, 'weekday', defaults.weekday);
-                        updateGroupTemplateService(idx, 'saturday', defaults.saturday);
-                        updateGroupTemplateService(idx, 'sunday', defaults.sunday);
-                        updateGroupTemplateService(idx, 'publicHoliday', defaults.publicHoliday);
-                        updateGroupTemplateTravel(idx, defaults.travel);
-                      }}
-                      className="w-full md:min-w-[320px] md:w-auto px-2 py-1 text-xs border rounded bg-white"
-                    >
-                      {registrationGroups.map((group) => (
-                        <option key={group.number} value={group.number}>
-                          {group.name} ({group.number})
-                        </option>
-                      ))}
-                    </select>
-                      <HoursInput
-                      value={row.hours}
-                      onChange={(v) => updateGroupTemplateRow(idx, 'hours', v)}
-                    />
-                    <span className="text-xs text-gray-700">hours/day</span>
-                    <button
-                      type="button"
-                      onClick={() => removeGroupTemplateRow(idx)}
-                      className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
-                    >
-                      Remove
-                    </button>
-                    </div>
+              <div className="space-y-3 pt-2 border-t border-indigo-200 mt-2">
+                {groupHoursTemplate.map((row, idx) => {
+                  const labelByBucket: Record<AllocationCategory, string> = {
+                    weekday: 'Weekday Daytime',
+                    weekday_evening: 'Weekday Evening',
+                    weekday_night: 'Weekday Night',
+                    weekday_night_sleepover: 'Night-Time Sleepover',
+                    saturday: 'Saturday',
+                    sunday: 'Sunday',
+                    publicHoliday: 'Public Holiday',
+                  };
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {(['weekday', 'saturday', 'sunday', 'publicHoliday'] as AllocationCategory[]).map((bucket) => {
-                        const labelByBucket: Record<AllocationCategory, string> = {
-                          weekday: 'Weekday Service Code',
-                          saturday: 'Saturday Service Code',
-                          sunday: 'Sunday Service Code',
-                          publicHoliday: 'Public Holiday Service Code',
-                        };
-                        const optionsForBucket = serviceOptions.filter(
-                          (s) =>
-                            s.registrationGroupNumber === row.registrationGroupNumber &&
-                            serviceMatchesBucket(s.category, bucket)
-                        );
+                  const weekdayBuckets: AllocationCategory[] = ['weekday', 'weekday_evening', 'weekday_night', 'weekday_night_sleepover'];
+                  const weekendBuckets: AllocationCategory[] = ['saturday', 'sunday', 'publicHoliday'];
 
-                        return (
-                          <label key={`template-${idx}-${bucket}`} className="flex flex-col gap-1">
-                            <span className="text-[11px] text-gray-600">{labelByBucket[bucket]}</span>
-                            <select
-                              value={row.serviceIds[bucket] || ''}
-                              onChange={(e) => updateGroupTemplateService(idx, bucket, e.target.value)}
-                              className="w-full px-2 py-1 text-xs border rounded bg-white"
-                            >
-                              <option value="">Select service...</option>
-                              {optionsForBucket.map((option) => (
-                                <option key={`template-${idx}-${bucket}-${option.id}`} value={option.id}>
-                                  {option.code} - {option.description}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        );
-                      })}
-                    </div>
+                  const renderServiceRow = (bucket: AllocationCategory) => {
+                    const hours = row.hours?.[bucket] ?? 0;
+                    const isInactive = hours === 0;
+                    const optionsForBucket = serviceOptions.filter(
+                      (s) =>
+                        s.registrationGroupNumber === row.registrationGroupNumber &&
+                        serviceMatchesBucket(s.category, bucket)
+                    );
 
-                    <div className="pt-2">
-                      <label className="flex flex-col gap-1">
-                        <span className="text-[11px] text-gray-600">Travel Service Code</span>
-                        <select
-                          value={row.travelServiceId || ''}
-                          onChange={(e) => updateGroupTemplateTravel(idx, e.target.value)}
-                          className="w-full px-2 py-1 text-xs border rounded bg-white"
+                    // Don't render row if no services exist for this group + category
+                    if (optionsForBucket.length === 0) return null;
+
+                    return (
+                      <div
+                        key={`template-${idx}-${bucket}`}
+                        className={`flex items-center gap-2 py-1.5 px-2 rounded transition-opacity ${isInactive ? 'opacity-50 bg-gray-50' : 'bg-white'}`}
+                      >
+                        <span className={`text-[11px] font-medium w-[130px] flex-shrink-0 ${isInactive ? 'text-gray-400' : 'text-gray-700'}`}>{labelByBucket[bucket]}</span>
+                        <div className="flex items-center gap-0.5 flex-shrink-0">
+                          <HoursInput
+                            value={hours}
+                            onChange={(v) => updateGroupTemplateHours(idx, bucket, v)}
+                          />
+                          <span className="text-[10px] text-gray-400">hrs</span>
+                        </div>
+                        <SearchableSelect
+                          options={optionsForBucket.map((option) => ({
+                            value: option.id,
+                            label: `${option.code} - ${option.description}`,
+                          }))}
+                          value={row.serviceIds[bucket] || ''}
+                          onChange={(val) => updateGroupTemplateService(idx, bucket, val)}
+                          placeholder="Select service..."
+                          className="flex-1 min-w-0"
+                        />
+                      </div>
+                    );
+                  };
+
+                  return (
+                    <div key={`group-template-${idx}`} className="rounded-lg border border-indigo-100 bg-white overflow-hidden">
+                      {/* Group Header */}
+                      <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-indigo-50 to-white border-b border-indigo-100">
+                        <span className="text-[11px] font-semibold text-indigo-600 flex-shrink-0">Group {idx + 1}</span>
+                        <SearchableSelect
+                          options={registrationGroups.map((group) => ({
+                            value: group.number,
+                            label: `${group.name} (${group.number})`,
+                          }))}
+                          value={row.registrationGroupNumber}
+                          onChange={(nextGroup) => {
+                            updateGroupTemplateRow(idx, 'registrationGroupNumber', nextGroup);
+                            const defaults = buildDefaultServiceSelection(nextGroup);
+                            updateGroupTemplateService(idx, 'weekday', defaults.weekday);
+                            updateGroupTemplateService(idx, 'weekday_evening', defaults.weekday_evening);
+                            updateGroupTemplateService(idx, 'weekday_night', defaults.weekday_night);
+                            updateGroupTemplateService(idx, 'weekday_night_sleepover', defaults.weekday_night_sleepover);
+                            updateGroupTemplateService(idx, 'saturday', defaults.saturday);
+                            updateGroupTemplateService(idx, 'sunday', defaults.sunday);
+                            updateGroupTemplateService(idx, 'publicHoliday', defaults.publicHoliday);
+                            if (idx === 0) {
+                              const fallbackTravelService = travelOptions.find(t => t.registrationGroupNumber === nextGroup) || travelOptions[0];
+                              if (fallbackTravelService) {
+                                updateFormData({ defaultTravelServiceId: fallbackTravelService.id });
+                              }
+                            }
+                          }}
+                          placeholder="Select registration group..."
+                          className="flex-1 min-w-0"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeGroupTemplateRow(idx)}
+                          className="px-2 py-1 text-[11px] text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors flex-shrink-0"
+                          title="Remove group"
                         >
-                          <option value="">Select travel service...</option>
-                          {travelOptions.filter((s) => s.registrationGroupNumber === row.registrationGroupNumber).map((option) => (
-                            <option key={`template-${idx}-travel-${option.id}`} value={option.id}>
-                              {option.code} - {option.description}
-                            </option>
-                          ))}
-                          {travelOptions.filter((s) => s.registrationGroupNumber === row.registrationGroupNumber).length === 0 && travelOptions.length > 0 && (
-                            <>
-                              <optgroup label="Other Groups">
-                                {travelOptions.filter((s) => s.registrationGroupNumber !== row.registrationGroupNumber).map((option) => (
-                                  <option key={`template-${idx}-travel-${option.id}`} value={option.id}>
-                                    {option.code} - {option.description} ({option.registrationGroupName})
-                                  </option>
-                                ))}
-                              </optgroup>
-                            </>
-                          )}
-                        </select>
-                      </label>
+                          ✕
+                        </button>
+                      </div>
+
+                      <div className="px-3 py-2 space-y-0.5">
+                        {/* Weekday Shifts */}
+                        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold pt-1 pb-0.5">Weekday Shifts</p>
+                        {weekdayBuckets.map(renderServiceRow)}
+
+                        {/* Weekend & Holidays */}
+                        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold pt-2 pb-0.5 border-t border-gray-100 mt-1">Weekend &amp; Holidays</p>
+                        {weekendBuckets.map(renderServiceRow)}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-indigo-200">
+                <p className="text-sm font-semibold text-indigo-900 mb-2">Global Travel Configuration</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-gray-700">Default Travel Distance (km)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="1000"
+                      step="0.5"
+                      value={formData.defaultTravelKm}
+                      onChange={(e) => {
+                        const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                        updateFormData({ defaultTravelKm: isNaN(value) ? 0 : value });
+                      }}
+                      className="w-full px-3 py-1.5 text-sm border border-indigo-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-gray-700">Default Travel Service Code</span>
+                    <SearchableSelect
+                      options={travelOptions.map((option) => ({
+                        value: option.id,
+                        label: `${option.code} - ${option.description}`,
+                      }))}
+                      value={formData.defaultTravelServiceId || ''}
+                      onChange={(val) => updateFormData({ defaultTravelServiceId: val })}
+                      placeholder="Select a travel code..."
+                    />
+                  </label>
+                </div>
+                <p className="text-[11px] text-indigo-700 mt-2">
+                  This distance will be systematically assigned to each date generated with "Apply to All Dates".
+                </p>
               </div>
             </div>
 
@@ -979,7 +1091,10 @@ export default function InvoiceForm({
                 const iso = dateKey(d);
                 const travelOverride = formData.perDaySchedules?.[iso]?.travelKm;
                 const allocations = formData.perDayServiceAllocations?.[iso] || [];
-                const allocatedHours = allocations.reduce((sum, row) => sum + (row.hours || 0), 0);
+                const visibleAllocations = allocations.filter(a => !travelOptions.some(t => t.id === a.serviceId));
+                const travelAllocations = allocations.filter(a => travelOptions.some(t => t.id === a.serviceId));
+                const allocatedHours = visibleAllocations.reduce((sum, row) => sum + (row.hours || 0), 0);
+                const allocatedKm = travelAllocations.reduce((sum, row) => sum + (row.hours || 0), 0);
                 const day = d.getDay();
                 const expanded = !!expandedDays[iso];
 
@@ -991,7 +1106,7 @@ export default function InvoiceForm({
                   updateFormData({ perDaySchedules: next, perDayServiceAllocations: nextAlloc });
                 };
 
-                const serviceNames = allocations
+                const serviceNames = visibleAllocations
                   .map((row) => serviceLabelById[row.serviceId])
                   .filter(Boolean)
                   .slice(0, 2)
@@ -1011,8 +1126,8 @@ export default function InvoiceForm({
                             {dayTypeBadge(getDayType(d))}
                           </div>
                           <p className="text-xs text-gray-500 mt-0.5">
-                            {allocations.length > 0
-                              ? `${allocations.length} service(s), ${allocatedHours}h${serviceNames ? ` — ${serviceNames}` : ''}`
+                            {visibleAllocations.length > 0 || travelAllocations.length > 0
+                              ? `${visibleAllocations.length} service(s), ${allocatedHours}h${allocatedKm > 0 ? ` + ${allocatedKm}km travel` : ''}${serviceNames ? ` — ${serviceNames}` : ''}`
                               : 'No services allocated'}
                           </p>
                         </div>
@@ -1038,23 +1153,7 @@ export default function InvoiceForm({
 
                     {expanded && (
                       <div className="px-3 pb-3 space-y-3 border-t border-gray-100">
-                        <div className="pt-2">
-                          <label className="block text-[11px] text-gray-500 mb-1">Travel KM Override (optional)</label>
-                          <input
-                            type="number"
-                            step="1"
-                            min="0"
-                            placeholder={formData.travelKmPerDay.toString()}
-                            value={travelOverride ?? ''}
-                            onChange={(e) => {
-                              const val = e.target.value === '' ? undefined : parseFloat(e.target.value);
-                              updateDayTravelKm(iso, val);
-                            }}
-                            className="w-24 px-2 py-1 text-xs border rounded"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
+                        <div className="space-y-2 pt-2">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-semibold text-gray-700">Service Rows</span>
                             <button
@@ -1067,23 +1166,25 @@ export default function InvoiceForm({
                             </button>
                           </div>
 
-                          {allocations.length === 0 ? (
+                          {visibleAllocations.length === 0 ? (
                             <p className="text-[11px] text-gray-600">No rows yet. Add a service row for this day.</p>
                           ) : (
                             <div className="space-y-2">
-                              {allocations.map((row, idx) => (
+                              {allocations.map((row, idx) => {
+                                const isTravel = travelOptions.some((t) => t.id === row.serviceId);
+                                if (isTravel) return null;
+                                return (
                                 <div key={`${iso}-allocation-${idx}`} className="flex items-center gap-2 flex-wrap">
-                                  <select
+                                  <SearchableSelect
+                                    options={serviceOptions.map((option) => ({
+                                      value: option.id,
+                                      label: `${option.code} - ${option.description}`,
+                                    }))}
                                     value={row.serviceId}
-                                    onChange={(e) => updateServiceAllocationRow(iso, idx, 'serviceId', e.target.value)}
-                                    className="w-full md:min-w-[220px] md:w-auto px-2 py-1 text-xs border rounded bg-white"
-                                  >
-                                    {serviceOptions.map((option) => (
-                                      <option key={option.id} value={option.id}>
-                                        {option.code} - {option.description}
-                                      </option>
-                                    ))}
-                                  </select>
+                                    onChange={(val) => updateServiceAllocationRow(iso, idx, 'serviceId', val)}
+                                    placeholder="Select service..."
+                                    className="w-full md:min-w-[220px] md:w-auto"
+                                  />
                                   <HoursInput
                                     value={row.hours}
                                     onChange={(v) => updateServiceAllocationRow(iso, idx, 'hours', v)}
@@ -1097,10 +1198,11 @@ export default function InvoiceForm({
                                     Remove
                                   </button>
                                 </div>
-                              ))}
-                              {getAllocationValidationErrors(d, allocations).length > 0 && (
+                                );
+                              })}
+                              {getAllocationValidationErrors(d, visibleAllocations).length > 0 && (
                                 <div className="space-y-1">
-                                  {getAllocationValidationErrors(d, allocations).map((error, idx) => (
+                                  {getAllocationValidationErrors(d, visibleAllocations).map((error, idx) => (
                                     <p key={`${iso}-error-${idx}`} className="text-[11px] text-red-700 bg-red-50 border border-red-100 rounded px-2 py-1">
                                       {error}
                                     </p>
@@ -1112,6 +1214,58 @@ export default function InvoiceForm({
                               </p>
                             </div>
                           )}
+                          
+                          <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-3">
+                            <span className="text-xs font-semibold text-gray-700">Travel Rows</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const defaultTravelId = travelOptions[0]?.id || '';
+                                updateDayServiceAllocations(iso, [...allocations, { serviceId: defaultTravelId, hours: 10 }]);
+                              }}
+                              className="px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                              disabled={travelOptions.length === 0}
+                            >
+                              + Add Travel
+                            </button>
+                          </div>
+                          
+                          {allocations.filter(a => travelOptions.some(t => t.id === a.serviceId)).length === 0 ? (
+                            <p className="text-[11px] text-gray-600">No travel allocated for this day.</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {allocations.map((row, idx) => {
+                                const isTravel = travelOptions.some((t) => t.id === row.serviceId);
+                                if (!isTravel) return null;
+                                return (
+                                <div key={`${iso}-travel-allocation-${idx}`} className="flex items-center gap-2 flex-wrap">
+                                  <SearchableSelect
+                                    options={travelOptions.map((option) => ({
+                                      value: option.id,
+                                      label: `${option.code} - ${option.description}`,
+                                    }))}
+                                    value={row.serviceId}
+                                    onChange={(val) => updateServiceAllocationRow(iso, idx, 'serviceId', val)}
+                                    placeholder="Select travel code..."
+                                    className="w-full md:min-w-[220px] md:w-auto"
+                                  />
+                                  <HoursInput
+                                    value={row.hours}
+                                    onChange={(v) => updateServiceAllocationRow(iso, idx, 'hours', v)}
+                                  />
+                                  <span className="text-xs text-gray-600">km</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeServiceAllocationRow(iso, idx)}
+                                    className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -1121,25 +1275,6 @@ export default function InvoiceForm({
             </div>
           </div>
         )}
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Travel Distance Per Day (km)
-          </label>
-          <input
-            type="number"
-            min="0"
-            max="100"
-            step="0.5"
-            value={formData.travelKmPerDay}
-            onChange={(e) => {
-              const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
-              updateFormData({ travelKmPerDay: isNaN(value) ? 0 : value });
-            }}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          <p className="text-xs text-gray-500 mt-1">Default travel distance per day. Can be overridden per day using the day-by-day view above.</p>
-        </div>
       </div>
     </div>
   );
