@@ -45,7 +45,7 @@ export async function generatePDF(invoiceData: InvoiceData): Promise<void> {
   // ============================================
   
   const headerStartY = currentY;
-  const headerHeight = 35; // Fixed height for all elements
+  const headerHeight = 35; // Slightly taller header so logo appears larger and unclipped
   
   // LEFT COLUMN: Company Name and Info
   doc.setFontSize(14);
@@ -74,8 +74,8 @@ export async function generatePDF(invoiceData: InvoiceData): Promise<void> {
         reader.onload = () => resolve(reader.result as string);
         reader.readAsDataURL(blob);
       });
-      const logoWidth = 35;
-      const logoHeight = 35; // Square aspect ratio to prevent stretching
+      const logoWidth = 50;
+      const logoHeight = 50; // Square aspect ratio to prevent stretching
       const logoX = (pageWidth - logoWidth) / 2; // Center horizontally
       const logoY = headerStartY + 0; // Align with top of header
       doc.addImage(dataUrl, 'JPEG', logoX, logoY, logoWidth, logoHeight);
