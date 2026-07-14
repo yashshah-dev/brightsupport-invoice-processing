@@ -78,6 +78,7 @@ export interface FormData {
   defaultTravelKm: number;
   defaultTravelServiceId?: string;
   clientInfo: ClientInfo;
+  pricingYear?: string;
 }
 
 const STORAGE_KEY = 'invoice_form_data_v2'; // Bump version
@@ -164,6 +165,7 @@ export default function InvoiceForm({
       planManager: DEFAULT_CLIENT_INFO.planManager,
       planManagerEmail: DEFAULT_CLIENT_INFO.planManagerEmail,
     },
+    pricingYear: '2026-27',
   };
 
   const [formData, setFormData] = useState<FormData>(defaultFormData);
@@ -200,6 +202,7 @@ export default function InvoiceForm({
           ...defaultFormData.clientInfo,
           ...(saved.clientInfo || {}),
         },
+        pricingYear: saved.pricingYear || defaultFormData.pricingYear,
       };
       setFormData(hydrated);
       onFormChange(hydrated);
@@ -210,7 +213,7 @@ export default function InvoiceForm({
   }, []); // Only run once on mount
 
   useEffect(() => {
-    loadServices()
+    loadServices(formData.pricingYear || '2026-27')
       .then((items) => {
         const activeItems = items.filter((item) => item.active);
         setServiceOptions(activeItems.filter((item) => item.category !== 'travel'));
@@ -219,7 +222,18 @@ export default function InvoiceForm({
       .catch((error) => {
         console.warn('Failed to load service options for daily allocation:', error);
       });
-  }, []);
+  }, [formData.pricingYear]);
+
+  // Re-initialize default travel option when travelOptions load
+  useEffect(() => {
+    if (travelOptions.length > 0) {
+      const defaultTravel = travelOptions.find((o) => o.code.includes('_799_') && o.active) || travelOptions[0];
+      const currentValid = travelOptions.some((o) => o.id === formData.defaultTravelServiceId);
+      if (defaultTravel && (!formData.defaultTravelServiceId || !currentValid)) {
+        updateFormData({ defaultTravelServiceId: defaultTravel.id });
+      }
+    }
+  }, [travelOptions]);
 
   const registrationGroups = useMemo(() => {
     const map = new Map<string, string>();
@@ -273,6 +287,22 @@ export default function InvoiceForm({
 
   const updateFormData = (updates: Partial<FormData>) => {
     const newFormData = { ...formData, ...updates };
+
+    // Auto-switch NDIS pricing version when start date changes
+    if (updates.startDate !== undefined) {
+      if (updates.startDate) {
+        const threshold = new Date(2026, 6, 1); // 1 July 2026 (Note: month is 0-indexed, so 6 is July)
+        const compareDate = new Date(updates.startDate);
+        compareDate.setHours(0, 0, 0, 0);
+
+        if (compareDate >= threshold) {
+          newFormData.pricingYear = '2026-27';
+        } else {
+          newFormData.pricingYear = '2025-26';
+        }
+      }
+    }
+
     setFormData(newFormData);
     onFormChange(newFormData);
   };
@@ -819,7 +849,7 @@ export default function InvoiceForm({
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-700">Service Period</h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Invoice Date *
@@ -862,6 +892,21 @@ export default function InvoiceForm({
               placeholderText="Select end date"
               required
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              NDIS Pricing Year *
+            </label>
+            <select
+              value={formData.pricingYear || '2026-27'}
+              onChange={(e) => updateFormData({ pricingYear: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-700 font-medium"
+            >
+              <option value="2026-27">NDIS 2026-27 (1 July 2026)</option>
+              <option value="2025-26">NDIS 2025-26 (24 Nov 2025)</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">Apply catalog pricing limits</p>
           </div>
         </div>
       </div>

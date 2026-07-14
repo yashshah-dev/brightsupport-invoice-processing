@@ -15,7 +15,7 @@ export type ServiceItem = {
 
 const STORAGE_KEY = 'services_catalog_override_v1';
 
-export async function loadServices(): Promise<ServiceItem[]> {
+export async function loadServices(pricingYear?: string): Promise<ServiceItem[]> {
   const normalize = (items: any[]): ServiceItem[] => {
     return items.map((item) => ({
       ...item,
@@ -25,23 +25,39 @@ export async function loadServices(): Promise<ServiceItem[]> {
   };
 
   // If overrides exist (user edited), prefer them
-  const override = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
+  const key = pricingYear ? `${STORAGE_KEY}_${pricingYear}` : STORAGE_KEY;
+  const override = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
   if (override) {
     try {
       return normalize(JSON.parse(override));
     } catch { }
   }
   // Else fetch default JSON from static file (PR-managed)
-  const res = await fetch(asset('/data/services.json'));
-  if (!res.ok) throw new Error('Failed to load services.json');
+  const fileSuffix = pricingYear ? `-${pricingYear}` : '';
+  const res = await fetch(asset(`/data/services${fileSuffix}.json`));
+  if (!res.ok) {
+    const fallbackRes = await fetch(asset('/data/services.json'));
+    if (!fallbackRes.ok) throw new Error('Failed to load services.json');
+    return normalize(await fallbackRes.json());
+  }
   return normalize(await res.json());
 }
 
 // Load the published catalog bundled with the app (authoritative baseline).
 // This intentionally ignores localStorage overrides.
-export async function loadPublishedServices(): Promise<ServiceItem[]> {
-  const res = await fetch(asset('/data/services.json'));
-  if (!res.ok) throw new Error('Failed to load published services catalog');
+export async function loadPublishedServices(pricingYear?: string): Promise<ServiceItem[]> {
+  const fileSuffix = pricingYear ? `-${pricingYear}` : '';
+  const res = await fetch(asset(`/data/services${fileSuffix}.json`));
+  if (!res.ok) {
+    const fallbackRes = await fetch(asset('/data/services.json'));
+    if (!fallbackRes.ok) throw new Error('Failed to load published services catalog');
+    const items = (await fallbackRes.json()) as ServiceItem[];
+    return items.map((item) => ({
+      ...item,
+      registrationGroupNumber: item.registrationGroupNumber || '',
+      registrationGroupName: item.registrationGroupName || '',
+    }));
+  }
   const items = (await res.json()) as ServiceItem[];
   return items.map((item) => ({
     ...item,
@@ -50,15 +66,17 @@ export async function loadPublishedServices(): Promise<ServiceItem[]> {
   }));
 }
 
-export function saveServices(items: ServiceItem[]) {
+export function saveServices(items: ServiceItem[], pricingYear?: string) {
   if (typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    const key = pricingYear ? `${STORAGE_KEY}_${pricingYear}` : STORAGE_KEY;
+    localStorage.setItem(key, JSON.stringify(items));
   }
 }
 
-export function clearServicesOverride() {
+export function clearServicesOverride(pricingYear?: string) {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem(STORAGE_KEY);
+    const key = pricingYear ? `${STORAGE_KEY}_${pricingYear}` : STORAGE_KEY;
+    localStorage.removeItem(key);
   }
 }
 
@@ -124,14 +142,14 @@ export function validateCatalog(items: ServiceItem[]): ValidationError[] {
   return errors;
 }
 
-export async function importCatalog(file: File): Promise<ServiceItem[]> {
+export async function importCatalog(file: File, pricingYear?: string): Promise<ServiceItem[]> {
   const text = await file.text();
   const parsed = JSON.parse(text) as ServiceItem[];
   const errs = validateCatalog(parsed);
   if (errs.length > 0) {
     throw new Error(`Invalid catalog: ${errs.map(e => e.message).join('; ')}`);
   }
-  saveServices(parsed);
+  saveServices(parsed, pricingYear);
   return parsed;
 }
 

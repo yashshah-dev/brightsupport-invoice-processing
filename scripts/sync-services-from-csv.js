@@ -8,9 +8,17 @@ const csvPath = process.argv[2]
   ? path.resolve(root, process.argv[2])
   : path.resolve(root, 'NDIS-Support Catalogue-2025-26 -v1.1.csv');
 
+const filename = path.basename(csvPath);
+let versionSuffix = '';
+if (filename.includes('2025-26')) {
+  versionSuffix = '-2025-26';
+} else if (filename.includes('2026-27')) {
+  versionSuffix = '-2026-27';
+}
+
 const targetFiles = [
-  path.resolve(root, 'data/services.json'),
-  path.resolve(root, 'public/data/services.json'),
+  path.resolve(root, `data/services${versionSuffix}.json`),
+  path.resolve(root, `public/data/services${versionSuffix}.json`),
 ];
 
 function parseCsv(text) {
@@ -70,7 +78,7 @@ function parseRate(raw) {
 }
 
 function getPreferredRate(row, headers) {
-  const candidates = ['NSW', 'ACT', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'Remote', 'Very Remote'];
+  const candidates = ['National', 'NSW', 'ACT', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'Remote', 'Very Remote'];
   for (const col of candidates) {
     const idx = headers.indexOf(col);
     if (idx < 0) continue;
@@ -161,19 +169,20 @@ function main() {
   const csvRows = loadCsvRows(csvPath);
 
   const baseFile = targetFiles[0];
-  const existingBase = JSON.parse(fs.readFileSync(baseFile, 'utf8'));
+  const existingBase = fs.existsSync(baseFile) ? JSON.parse(fs.readFileSync(baseFile, 'utf8')) : [];
   const existingByCode = new Map(existingBase.map((item) => [item.code, item]));
 
   for (const filePath of targetFiles) {
-    if (!fs.existsSync(filePath)) {
-      throw new Error(`Target file not found: ${filePath}`);
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
 
     const result = syncServicesFile(filePath, csvRows, existingByCode);
     console.log(`${path.relative(root, filePath)}: rebuilt with ${result.total} services from CSV`);
   }
 
-  console.log(`services.json files now include every CSV service row (${csvRows.length} total).`);
+  console.log(`services${versionSuffix}.json files now include every CSV service row (${csvRows.length} total).`);
 }
 
 try {

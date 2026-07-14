@@ -127,7 +127,8 @@ export default function InvoiceGenerator() {
         formData.defaultSchedule,
         dayCategories,
         formData.perDaySchedules,
-        formData.perDayServiceAllocations
+        formData.perDayServiceAllocations,
+        formData.pricingYear
       ).then((invoice) => {
         setInvoiceData(applyLineItemOverrides(invoice));
         setIsStale(false);
@@ -161,7 +162,8 @@ export default function InvoiceGenerator() {
       formData.defaultSchedule,
       dayCategories,
       formData.perDaySchedules,
-      formData.perDayServiceAllocations
+      formData.perDayServiceAllocations,
+      formData.pricingYear
     ).then((invoice) => {
       // Set raw calculated invoice (without manual overrides)
       setInvoiceData(invoice);
@@ -216,7 +218,7 @@ export default function InvoiceGenerator() {
     }
 
     const calcResult = validateInvoice(invoiceData);
-    const publishedCatalog = await loadPublishedServices();
+    const publishedCatalog = await loadPublishedServices(formData?.pricingYear);
     const catalogErrors = validateLineItemsAgainstCatalog(invoiceData.lineItems, publishedCatalog);
 
     setValidationResult({

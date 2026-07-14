@@ -34,6 +34,7 @@ function getCat(cat: ServiceCategory): CatConfig {
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export default function ServiceCatalogAdmin() {
+  const [pricingYear, setPricingYear] = useState('2026-27');
   const [items, setItems]       = useState<ServiceItem[]>([]);
   const [filter, setFilter]     = useState<ServiceCategory | 'all'>('all');
   const [query, setQuery]       = useState('');
@@ -44,8 +45,8 @@ export default function ServiceCatalogAdmin() {
   const groupRefs = useRef<Record<string, HTMLElement | null>>({});
 
   useEffect(() => {
-    loadServices().then(setItems).catch(console.error);
-  }, []);
+    loadServices(pricingYear).then(setItems).catch(console.error);
+  }, [pricingYear]);
 
   const filtered = useMemo(() =>
     items.filter(item => {
@@ -114,7 +115,7 @@ export default function ServiceCatalogAdmin() {
 
   function persist(next: ServiceItem[]) {
     setItems(next);
-    saveServices(next);
+    saveServices(next, pricingYear);
   }
 
   function onAdd() {
@@ -202,9 +203,9 @@ export default function ServiceCatalogAdmin() {
   }
 
   async function onResetDefaults() {
-    if (!confirm('Reset to NDIS 2025-26 VIC defaults? Your local changes will be cleared.')) return;
-    clearServicesOverride();
-    const fresh = await loadServices();
+    if (!confirm(`Reset to NDIS ${pricingYear} defaults? Your local changes will be cleared.`)) return;
+    clearServicesOverride(pricingYear);
+    const fresh = await loadServices(pricingYear);
     setItems(fresh);
   }
 
@@ -214,11 +215,21 @@ export default function ServiceCatalogAdmin() {
       {/* ── Header ────────────────────────────────────────────────── */}
       <div className="px-6 py-5 bg-gradient-to-r from-blue-600 to-indigo-700">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-bold text-white">Service Catalog</h2>
-            <p className="text-blue-200 text-sm mt-0.5">
-              NDIS 2025-26 &middot; VIC Price Limits &middot; {items.length} services
-            </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-white">Service Catalog</h2>
+              <p className="text-blue-200 text-sm mt-0.5">
+                VIC Price Limits &middot; {items.length} services
+              </p>
+            </div>
+            <select
+              value={pricingYear}
+              onChange={(e) => setPricingYear(e.target.value)}
+              className="px-3 py-1.5 bg-blue-500/30 hover:bg-blue-500/50 border border-blue-400/50 text-white rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-300 focus:outline-none cursor-pointer"
+            >
+              <option value="2026-27" className="text-gray-800 bg-white font-medium">NDIS 2026-27 (1 July 2026)</option>
+              <option value="2025-26" className="text-gray-800 bg-white font-medium">NDIS 2025-26 (24 Nov 2025)</option>
+            </select>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -249,7 +260,7 @@ export default function ServiceCatalogAdmin() {
                   const f = e.target.files?.[0];
                   if (!f) return;
                   try {
-                    const next = await importCatalog(f);
+                    const next = await importCatalog(f, pricingYear);
                     setItems(next);
                   } catch (err: any) {
                     alert(err?.message || 'Failed to import catalog');
@@ -498,7 +509,11 @@ export default function ServiceCatalogAdmin() {
 
       {/* ── Footer ────────────────────────────────────────────────── */}
       <div className="px-6 py-3 bg-gray-50 border-t text-xs text-gray-400 flex flex-col sm:flex-row sm:justify-between gap-1">
-        <span>NDIS Support Catalogue 2025-26 v1.1 &middot; VIC Price Limits &middot; Effective 24 November 2025</span>
+        <span>
+          {pricingYear === '2026-27'
+            ? 'NDIS Support Catalogue 2026-27 v1.1 \u00b7 National Price Limits \u00b7 Effective 1 July 2026'
+            : 'NDIS Support Catalogue 2025-26 v1.1 \u00b7 VIC Price Limits \u00b7 Effective 24 November 2025'}
+        </span>
         <span>Changes are saved locally. Export JSON to update the source catalog file.</span>
       </div>
     </div>

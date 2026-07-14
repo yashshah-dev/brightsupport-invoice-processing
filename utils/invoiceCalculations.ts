@@ -19,12 +19,13 @@ export async function calculateLineItems(
   dayCategories: DayCategory[],
   defaultSchedule: DaySchedule,
   perDaySchedules?: Record<string, DaySchedule>,
-  perDayServiceAllocations?: Record<string, DailyServiceAllocation[]>
+  perDayServiceAllocations?: Record<string, DailyServiceAllocation[]>,
+  pricingYear?: string
 ): Promise<InvoiceLineItem[]> {
   const lineItems: InvoiceLineItem[] = [];
 
   // Load services from catalog (localStorage override or default JSON)
-  const services = await loadServices();
+  const services = await loadServices(pricingYear);
   const categoryMap = mapCategoryToCode(services);
 
   const serviceById = new Map(services.map((service) => [service.id, service]));
@@ -134,13 +135,15 @@ export async function buildInvoiceData(
   defaultSchedule: DaySchedule, // Renamed from hoursPerDay
   dayCategories: DayCategory[],
   perDaySchedules?: Record<string, DaySchedule>, // Renamed from perDayHours
-  perDayServiceAllocations?: Record<string, DailyServiceAllocation[]>
+  perDayServiceAllocations?: Record<string, DailyServiceAllocation[]>,
+  pricingYear?: string
 ): Promise<InvoiceData> {
   const lineItems = await calculateLineItems(
     dayCategories,
     defaultSchedule,
     perDaySchedules,
-    perDayServiceAllocations
+    perDayServiceAllocations,
+    pricingYear
   );
   const { subtotal, gst, total } = calculateInvoiceTotals(lineItems);
   const excludedDates = dayCategories.filter(d => d.isExcluded).map(d => d.date);
