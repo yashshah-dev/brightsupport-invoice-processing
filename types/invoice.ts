@@ -59,6 +59,7 @@ export interface InvoiceData {
   perDayServiceAllocations?: Record<string, DailyServiceAllocation[]>;
   excludedDates: Date[];
   dayCategories: DayCategory[];
+  combineLineItems?: boolean;
   lineItems: InvoiceLineItem[];
   subtotal: number;
   gst: number;

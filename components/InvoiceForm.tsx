@@ -72,6 +72,7 @@ export interface FormData {
   invoiceDate: Date | null;
   startDate: Date | null;
   endDate: Date | null;
+  combineLineItems?: boolean;
   defaultSchedule: DaySchedule; // Renamed from hoursPerDay
   perDaySchedules?: Record<string, DaySchedule>; // Renamed from perDayHours
   perDayServiceAllocations?: Record<string, DailyServiceAllocation[]>;
@@ -119,6 +120,7 @@ function loadSavedFormData(): Partial<FormData> | null {
       endDate: parsed.endDate ? new Date(parsed.endDate) : null,
       perDaySchedules: parsed.perDaySchedules || {},
       perDayServiceAllocations: parsed.perDayServiceAllocations || {},
+      combineLineItems: parsed.combineLineItems !== undefined ? parsed.combineLineItems : true,
     };
   } catch {
     return null;
@@ -153,6 +155,7 @@ export default function InvoiceForm({
     invoiceDate: new Date(),
     startDate: null,
     endDate: null,
+    combineLineItems: true,
     defaultSchedule: { morning: 0, evening: 0, night: 0 },
     perDaySchedules: {},
     perDayServiceAllocations: {},
@@ -195,6 +198,7 @@ export default function InvoiceForm({
       const hydrated: FormData = {
         ...defaultFormData,
         ...saved,
+        combineLineItems: saved.combineLineItems !== undefined ? saved.combineLineItems : true,
         defaultSchedule: saved.defaultSchedule || defaultFormData.defaultSchedule,
         perDaySchedules: normalizeDateKeyedMap(saved.perDaySchedules, validKeys),
         perDayServiceAllocations: normalizeDateKeyedMap(saved.perDayServiceAllocations, validKeys),
@@ -365,6 +369,7 @@ export default function InvoiceForm({
         invoiceDate: new Date(),
         startDate: null,
         endDate: null,
+        combineLineItems: true,
         defaultSchedule: { morning: 0, evening: 0, night: 0 },
         perDaySchedules: {},
         perDayServiceAllocations: {},
@@ -849,7 +854,7 @@ export default function InvoiceForm({
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-700">Service Period</h3>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Invoice Date *
@@ -907,6 +912,39 @@ export default function InvoiceForm({
               <option value="2025-26">NDIS 2025-26 (24 Nov 2025)</option>
             </select>
             <p className="text-xs text-gray-500 mt-1">Apply catalog pricing limits</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Line Item Mode
+            </label>
+            <div className="flex items-center p-1 bg-gray-100 rounded-lg border border-gray-300 h-[42px]">
+              <button
+                type="button"
+                onClick={() => updateFormData({ combineLineItems: true })}
+                className={`flex-1 h-full text-xs font-semibold rounded-md transition-all ${
+                  formData.combineLineItems !== false
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Combined
+              </button>
+              <button
+                type="button"
+                onClick={() => updateFormData({ combineLineItems: false })}
+                className={`flex-1 h-full text-xs font-semibold rounded-md transition-all ${
+                  formData.combineLineItems === false
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Per Date
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {formData.combineLineItems !== false ? 'Combine dates into 1 line item' : 'Individual line item per date'}
+            </p>
           </div>
         </div>
       </div>

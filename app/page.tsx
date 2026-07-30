@@ -128,7 +128,8 @@ export default function InvoiceGenerator() {
         dayCategories,
         formData.perDaySchedules,
         formData.perDayServiceAllocations,
-        formData.pricingYear
+        formData.pricingYear,
+        formData.combineLineItems !== false
       ).then((invoice) => {
         setInvoiceData(applyLineItemOverrides(invoice));
         setIsStale(false);
@@ -163,7 +164,8 @@ export default function InvoiceGenerator() {
       dayCategories,
       formData.perDaySchedules,
       formData.perDayServiceAllocations,
-      formData.pricingYear
+      formData.pricingYear,
+      formData.combineLineItems !== false
     ).then((invoice) => {
       // Set raw calculated invoice (without manual overrides)
       setInvoiceData(invoice);
