@@ -92,16 +92,16 @@ export function countDaysByCategory(dayCategories: DayCategory[]) {
 }
 
 /**
- * Generate invoice number based on current date and time.
- * Format: INV-YYYY-MMDD-HHmmss  — no localStorage, fresh on every call.
+ * Generate a short, clean invoice number based on current date and time.
+ * Format: INV-YYMMDD-HHmm (15 chars, e.g. INV-260730-1323)
  */
 export function generateInvoiceNumber(date: Date = new Date()): string {
-  return `INV-${format(date, 'yyyy-MMdd-HHmmss')}`;
+  return `INV-${format(date, 'yyMMdd-HHmm')}`;
 }
 
 /**
- * Generate filename with timestamp, invoice number, and service period dates
- * Format: YYYY-MM-DD_HHmmss_INV-YYYY-MMDD-XXXX_StartDate_EndDate
+ * Generate concise filename: [InvoiceNumber]_[ClientSlug].[extension]
+ * e.g. INV-260730-1323_john-doe.pdf
  */
 export function generateInvoiceFilename(
   invoiceNumber: string,
@@ -110,12 +110,6 @@ export function generateInvoiceFilename(
   endDate?: Date,
   clientName?: string
 ): string {
-  // Optimized scheme: INV-XXXX_23Dec24-25Jan25_001637.ext
-  const time = format(new Date(), 'HHmmss');
-  const range = startDate && endDate
-    ? `${format(startDate, 'ddMMMyy')}-${format(endDate, 'ddMMMyy')}`
-    : undefined;
-  // Optional client slug (letters/digits only, hyphen separated)
   const slug = clientName
     ? clientName
         .trim()
@@ -123,7 +117,7 @@ export function generateInvoiceFilename(
         .replace(/[^a-z0-9\s]/g, '')
         .replace(/\s+/g, '-')
     : undefined;
-  const parts = [invoiceNumber, range, slug, time].filter(Boolean) as string[];
+  const parts = [invoiceNumber, slug].filter(Boolean) as string[];
   const base = parts.join('_');
   return `${base}.${extension}`;
 }
