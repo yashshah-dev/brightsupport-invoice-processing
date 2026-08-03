@@ -145,3 +145,18 @@ export function formatDateDisplay(date: Date): string {
 export function formatInvoiceDate(date: Date): string {
   return format(date, 'dd MMMM yyyy');
 }
+
+/**
+ * Determine NDIS Pricing Year for a given date.
+ * - Date >= 1 July 2026 -> '2026-27'
+ * - Date >= 1 July 2025 -> '2025-26'
+ * - Date < 1 July 2025 -> '2024-25'
+ */
+export function getPricingYearForDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = date.getMonth(); // 0-indexed: 6 is July
+  if (year > 2026 || (year === 2026 && month >= 6)) return '2026-27';
+  if (year > 2025 || (year === 2025 && month >= 6)) return '2025-26';
+  return '2024-25';
+}
+

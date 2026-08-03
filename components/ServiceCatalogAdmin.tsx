@@ -228,7 +228,8 @@ export default function ServiceCatalogAdmin() {
               className="px-3 py-1.5 bg-blue-500/30 hover:bg-blue-500/50 border border-blue-400/50 text-white rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-300 focus:outline-none cursor-pointer"
             >
               <option value="2026-27" className="text-gray-800 bg-white font-medium">NDIS 2026-27 (1 July 2026)</option>
-              <option value="2025-26" className="text-gray-800 bg-white font-medium">NDIS 2025-26 (24 Nov 2025)</option>
+              <option value="2025-26" className="text-gray-800 bg-white font-medium">NDIS 2025-26 (1 July 2025)</option>
+              <option value="2024-25" className="text-gray-800 bg-white font-medium">NDIS 2024-25 (1 July 2024)</option>
             </select>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -512,7 +513,9 @@ export default function ServiceCatalogAdmin() {
         <span>
           {pricingYear === '2026-27'
             ? 'NDIS Support Catalogue 2026-27 v1.1 \u00b7 National Price Limits \u00b7 Effective 1 July 2026'
-            : 'NDIS Support Catalogue 2025-26 v1.1 \u00b7 VIC Price Limits \u00b7 Effective 24 November 2025'}
+            : pricingYear === '2025-26'
+            ? 'NDIS Support Catalogue 2025-26 v1.1 \u00b7 VIC Price Limits \u00b7 Effective 1 July 2025'
+            : 'NDIS Support Catalogue 2024-25 v1.2 \u00b7 VIC Price Limits \u00b7 Effective 1 July 2024'}
         </span>
         <span>Changes are saved locally. Export JSON to update the source catalog file.</span>
       </div>

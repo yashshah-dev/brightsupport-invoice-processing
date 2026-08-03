@@ -6,6 +6,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { ClientInfo, DaySchedule, DailyServiceAllocation, DayCategory } from '@/types/invoice';
 import { DEFAULT_CLIENT_INFO } from '@/constants/invoice';
 import { loadServices, ServiceItem } from '@/utils/services';
+import { getPricingYearForDate } from '@/utils/dateUtils';
 import { format } from 'date-fns';
 import DayExclusionCalendar from '@/components/DayExclusionCalendar';
 import SearchableSelect from '@/components/SearchableSelect';
@@ -295,15 +296,7 @@ export default function InvoiceForm({
     // Auto-switch NDIS pricing version when start date changes
     if (updates.startDate !== undefined) {
       if (updates.startDate) {
-        const threshold = new Date(2026, 6, 1); // 1 July 2026 (Note: month is 0-indexed, so 6 is July)
-        const compareDate = new Date(updates.startDate);
-        compareDate.setHours(0, 0, 0, 0);
-
-        if (compareDate >= threshold) {
-          newFormData.pricingYear = '2026-27';
-        } else {
-          newFormData.pricingYear = '2025-26';
-        }
+        newFormData.pricingYear = getPricingYearForDate(updates.startDate);
       }
     }
 
@@ -909,7 +902,8 @@ export default function InvoiceForm({
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-700 font-medium"
             >
               <option value="2026-27">NDIS 2026-27 (1 July 2026)</option>
-              <option value="2025-26">NDIS 2025-26 (24 Nov 2025)</option>
+              <option value="2025-26">NDIS 2025-26 (1 July 2025)</option>
+              <option value="2024-25">NDIS 2024-25 (1 July 2024)</option>
             </select>
             <p className="text-xs text-gray-500 mt-1">Apply catalog pricing limits</p>
           </div>
