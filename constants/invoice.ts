@@ -104,19 +104,38 @@ export const VICTORIA_PUBLIC_HOLIDAYS_2026 = [
   { date: '2026-04-04', name: 'Saturday before Easter Sunday', state: 'VIC' },
   { date: '2026-04-05', name: 'Easter Sunday', state: 'VIC' },
   { date: '2026-04-06', name: 'Easter Monday', state: 'VIC' },
-  { date: '2026-04-25', name: 'ANZAC Day', state: 'VIC' }, // Falls on Saturday, no replacement day
+  { date: '2026-04-25', name: 'ANZAC Day', state: 'VIC' },
   { date: '2026-06-08', name: "King's Birthday", state: 'VIC' },
-  // Note: AFL Grand Final date for 2026 not yet announced
+  { date: '2026-09-25', name: 'Friday before AFL Grand Final', state: 'VIC' },
   { date: '2026-11-03', name: 'Melbourne Cup Day', state: 'VIC' },
   { date: '2026-12-25', name: 'Christmas Day', state: 'VIC' },
-  { date: '2026-12-26', name: 'Boxing Day', state: 'VIC' }, // Falls on Saturday
-  { date: '2026-12-28', name: 'Boxing Day (observed)', state: 'VIC' }, // Monday replacement
+  { date: '2026-12-26', name: 'Boxing Day', state: 'VIC' },
+  { date: '2026-12-28', name: 'Boxing Day (observed)', state: 'VIC' },
+];
+
+export const VICTORIA_PUBLIC_HOLIDAYS_2027 = [
+  { date: '2027-01-01', name: "New Year's Day", state: 'VIC' },
+  { date: '2027-01-26', name: 'Australia Day', state: 'VIC' },
+  { date: '2027-03-08', name: 'Labour Day', state: 'VIC' },
+  { date: '2027-03-26', name: 'Good Friday', state: 'VIC' },
+  { date: '2027-03-27', name: 'Saturday before Easter Sunday', state: 'VIC' },
+  { date: '2027-03-28', name: 'Easter Sunday', state: 'VIC' },
+  { date: '2027-03-29', name: 'Easter Monday', state: 'VIC' },
+  { date: '2027-04-25', name: 'ANZAC Day', state: 'VIC' },
+  { date: '2027-06-14', name: "King's Birthday", state: 'VIC' },
+  { date: '2027-09-24', name: 'Friday before AFL Grand Final', state: 'VIC' },
+  { date: '2027-11-02', name: 'Melbourne Cup Day', state: 'VIC' },
+  { date: '2027-12-25', name: 'Christmas Day', state: 'VIC' },
+  { date: '2027-12-26', name: 'Boxing Day', state: 'VIC' },
+  { date: '2027-12-27', name: 'Christmas Day (observed)', state: 'VIC' },
+  { date: '2027-12-28', name: 'Boxing Day (observed)', state: 'VIC' },
 ];
 
 export const ALL_VICTORIA_HOLIDAYS = [
   ...VICTORIA_PUBLIC_HOLIDAYS_2024,
   ...VICTORIA_PUBLIC_HOLIDAYS_2025,
   ...VICTORIA_PUBLIC_HOLIDAYS_2026,
+  ...VICTORIA_PUBLIC_HOLIDAYS_2027,
 ];
 
 // Default configuration

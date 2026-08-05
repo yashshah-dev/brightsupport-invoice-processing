@@ -16,6 +16,7 @@ import { loadPublishedServices } from '@/utils/services';
 import dynamic from 'next/dynamic';
 
 const ServiceCatalogAdmin = dynamic(() => import('@/components/ServiceCatalogAdmin'), { ssr: false });
+const BudgetEstimator = dynamic(() => import('@/components/BudgetEstimator'), { ssr: false });
 import { isSameDay } from 'date-fns';
 
 const getLineItemKey = (item: InvoiceData['lineItems'][number]) =>
@@ -25,7 +26,7 @@ export default function InvoiceGenerator() {
   const [formData, setFormData] = useState<FormData | null>(null);
   const [dayCategories, setDayCategories] = useState<DayCategory[]>([]);
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
-  const [activeTab, setActiveTab] = useState<'form' | 'preview' | 'catalog'>('form');
+  const [activeTab, setActiveTab] = useState<'form' | 'preview' | 'catalog' | 'budget'>('form');
   const [manualHolidays, setManualHolidays] = useState<Array<{ date: Date; name: string }>>([]);  const [invoiceNumber, setInvoiceNumber] = useState<string>(() => generateInvoiceNumber());  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [descriptionOverrides, setDescriptionOverrides] = useState<Record<string, string>>({});
   const [quantityOverrides, setQuantityOverrides] = useState<Record<string, number>>({});
@@ -298,11 +299,11 @@ export default function InvoiceGenerator() {
 
         {/* Tab Navigation */}
         <div className="flex justify-center mb-6">
-          <div className="bg-white rounded-lg shadow-md p-1 w-full max-w-3xl grid grid-cols-1 sm:grid-cols-3 gap-1">
+          <div className="bg-white rounded-lg shadow-md p-1 w-full max-w-4xl grid grid-cols-2 sm:grid-cols-4 gap-1">
             <button
               onClick={() => setActiveTab('form')}
-              className={`px-3 sm:px-6 py-2 rounded-md font-medium text-sm sm:text-base transition-all ${activeTab === 'form'
-                  ? 'bg-blue-600 text-white'
+              className={`px-2 sm:px-4 py-2 rounded-md font-medium text-xs sm:text-sm transition-all ${activeTab === 'form'
+                  ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-gray-600 hover:bg-gray-100'
                 }`}
             >
@@ -311,8 +312,8 @@ export default function InvoiceGenerator() {
             <button
               onClick={() => setActiveTab('preview')}
               disabled={!canGenerate || isStale}
-              className={`px-3 sm:px-6 py-2 rounded-md font-medium text-sm sm:text-base transition-all ${activeTab === 'preview'
-                  ? 'bg-blue-600 text-white'
+              className={`px-2 sm:px-4 py-2 rounded-md font-medium text-xs sm:text-sm transition-all ${activeTab === 'preview'
+                  ? 'bg-blue-600 text-white shadow-sm'
                   : canGenerate && !isStale
                     ? 'text-gray-600 hover:bg-gray-100'
                     : 'text-gray-400 cursor-not-allowed'
@@ -322,12 +323,21 @@ export default function InvoiceGenerator() {
             </button>
             <button
               onClick={() => setActiveTab('catalog')}
-              className={`px-3 sm:px-6 py-2 rounded-md font-medium text-sm sm:text-base transition-all ${activeTab === 'catalog'
-                  ? 'bg-blue-600 text-white'
+              className={`px-2 sm:px-4 py-2 rounded-md font-medium text-xs sm:text-sm transition-all ${activeTab === 'catalog'
+                  ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-gray-600 hover:bg-gray-100'
                 }`}
             >
               Service Catalog
+            </button>
+            <button
+              onClick={() => setActiveTab('budget')}
+              className={`px-2 sm:px-4 py-2 rounded-md font-medium text-xs sm:text-sm transition-all ${activeTab === 'budget'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-100'
+                }`}
+            >
+              Budget Estimator
             </button>
           </div>
         </div>
@@ -720,9 +730,13 @@ export default function InvoiceGenerator() {
               </div>
             </div>
           </div>
-        ) : (
+        ) : activeTab === 'catalog' ? (
           <div className="space-y-6">
             <ServiceCatalogAdmin />
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <BudgetEstimator />
           </div>
         )}
       </div>
